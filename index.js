@@ -9,15 +9,17 @@ const stat = util.promisify(fs.stat);
 const exists = util.promisify(fs.exists);
 const mkdir = util.promisify(fs.mkdir);
 
+const defaultConfig = {
+  dest: "./",
+  hasDel: true,
+  port: 3000,
+};
+const configFile = "./config.json";
+
 const config = (function () {
-  const defaultConfig = {
-    dest: "./",
-    hasDel: true,
-    port: 3000,
-  };
   try {
     const config = JSON.parse(
-      fs.readFileSync(path.join(process.cwd(), "./config.json"), "utf-8")
+      fs.readFileSync(path.join(process.cwd(), configFile), "utf-8")
     );
     return Object.assign(defaultConfig, config);
   } catch {
@@ -32,6 +34,14 @@ const app = express();
 // 解析post的两个中间件
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+if (!fs.existsSync(configFile)) {
+  // 如果文件不存在，则创建并写入内容
+  fs.writeFileSync(configFile, JSON.stringify(defaultConfig, null, 2));
+  console.log("已创建配置文件config.json");
+} else {
+  console.log("已存在配置文件config.json");
+}
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
