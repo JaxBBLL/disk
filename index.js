@@ -25,7 +25,9 @@ const config = (function () {
   }
 })();
 const { hasDel, port } = config;
-const dest = path.resolve(__dirname, config.dest);
+const dest = path.isAbsolute(config.dest)
+  ? path.resolve(__dirname, config.dest)
+  : config.dest;
 const app = express();
 // 解析post的两个中间件
 app.use(express.json());

@@ -27,6 +27,6 @@
   },
   "devDependencies": {
     "nodemon": "3.0.1",
-    "pkg": "^5.8.1"
+    "pkg": "5.8.1"
   }
 }
