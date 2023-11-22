@@ -60,11 +60,16 @@ body {
   cursor: pointer;
 }
 
+.btn-create {
+  color: var(--primary-color);
+  margin-right: 20px;
+  cursor: pointer;
+}
 .btn-upload {
   display: inline-block;
   border: 1px solid var(--primary-color);
   background-color: var(--primary-color);
-  padding: 5px 14px;
+  padding: 5px 12px;
   cursor: pointer;
   color: #fff;
 }

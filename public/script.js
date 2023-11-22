@@ -75,7 +75,6 @@ const setup = function () {
 
   const entryDirectory = (item) => {
     paths.value.push(item.name);
-    console.log(paths.value);
     getList();
   };
 
@@ -92,6 +91,32 @@ const setup = function () {
       const path = `/download?filePath=${item.filePath}`;
       download(path);
     }
+  };
+
+  const createFolder = () => {
+    const input = window.prompt("新建文件夹名称");
+    const text = (input || "").trim();
+    if (!text) {
+      return;
+    }
+    fetch("/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filePath: paths.value,
+        name: text,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.isExit) {
+          window.alert("文件夹已存在");
+        } else {
+          getList();
+        }
+      });
   };
 
   const deleteHandle = (filePath) => {
@@ -119,6 +144,7 @@ const setup = function () {
     entryDirectory,
     gotoFolder,
     itemClick,
+    createFolder,
   };
 };
 

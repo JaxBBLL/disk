@@ -6,6 +6,8 @@ const os = require("os");
 const util = require("util");
 const readdir = util.promisify(fs.readdir);
 const stat = util.promisify(fs.stat);
+const exists = util.promisify(fs.exists);
+const mkdir = util.promisify(fs.mkdir);
 
 const config = (function () {
   const defaultConfig = {
@@ -109,7 +111,6 @@ app.post("/list", async (req, res) => {
       if (!stats) {
         continue;
       }
-      // if (!stats.isDirectory()) {
       ret.push({
         name: file,
         isDirectory: stats.isDirectory(),
@@ -119,7 +120,6 @@ app.post("/list", async (req, res) => {
         updatetime: formatDate(stats.mtime, "YYYY-MM-DD HH:mm"),
         hasDel,
       });
-      // }
     }
     return res.send({ code: 200, data: ret });
   } catch (err) {
@@ -159,6 +159,29 @@ app.get("/delete", (req, res) => {
     .catch((err) => console.error("删除文件时发生错误:", err));
 });
 
+app.post("/create", async (req, res) => {
+  const paths = req.body.filePath || [];
+  const name = req.body.name;
+  const result = await createFolder(path.join(dest, ...paths), name);
+  if (!result) {
+    res.status(500).send({
+      message: "创建失败",
+    });
+  } else if (result === 1) {
+    res.send({
+      code: 200,
+      isExit: 0,
+      message: "操作成功",
+    });
+  } else if (result === 2) {
+    res.send({
+      code: 200,
+      isExit: 1,
+      message: "目录已存在",
+    });
+  }
+});
+
 function getLocalIP() {
   const networkInterfaces = os.networkInterfaces();
   const addresses = [];
@@ -194,6 +217,20 @@ async function deleteFileOrFolder(path) {
     }
   } catch (error) {
     console.error(`An error occurred while deleting ${path}: ${error.message}`);
+  }
+}
+
+async function createFolder(directoryPath, newDirectoryName) {
+  const newDirectoryPath = path.join(directoryPath, newDirectoryName);
+  if (await exists(newDirectoryPath)) {
+    return 2;
+  } else {
+    try {
+      await mkdir(newDirectoryPath, { recursive: true });
+      return 1;
+    } catch (error) {
+      return 0;
+    }
   }
 }
 

@@ -22,8 +22,9 @@
               >{{item || '根目录'}}</span
             >
           </div>
+          <span class="btn-create" @click="createFolder">新建文件夹</span>
           <label class="btn-upload">
-            上传
+            上传文件
             <input
               v-if="isSingle"
               style="display: none"
@@ -82,7 +83,6 @@
               <div style="margin-left: 20px" v-if="item.hasDel">
                 <span
                   class="btn btn-danger"
-                  style="margin-left: 10px"
                   @click.stop="deleteHandle(item.filePath)"
                   >删除</span
                 >
