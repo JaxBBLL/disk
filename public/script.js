@@ -10,10 +10,12 @@ function download(filePath) {
 }
 
 const setup = function () {
+  const hash = location.hash.slice(1);
+
   const list = ref([]);
   const isSingle = ref(false);
   const isLoading = ref(false);
-  const paths = ref([""]);
+  const paths = ref(hash.split("/"));
 
   if (navigator.userAgent.indexOf("Weixin") > -1) {
     isSingle.value = true;
@@ -75,12 +77,14 @@ const setup = function () {
 
   const entryDirectory = (item) => {
     paths.value.push(item.name);
+    location.hash = paths.value.join("/");
     getList();
   };
 
   const gotoFolder = (index, isLast) => {
     if (isLast) return;
     paths.value.splice(index + 1);
+    location.hash = paths.value.join("/");
     getList();
   };
 

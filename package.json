@@ -14,8 +14,7 @@
     "scripts": "index.js",
     "assets": "public/**/*",
     "targets": [
-      "node14-win",
-      "node14-macos-x64"
+      "node14-win"
     ],
     "outputPath": "build"
   },
