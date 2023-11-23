@@ -46,13 +46,14 @@ if (!fs.existsSync(configFile)) {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const filePath = (req.query.filePath || "").split(",");
-    if (!fs.existsSync(dest)) {
-      fs.mkdir(dest, { recursive: true }, (err) => {
+    const realPath = path.join(dest, ...filePath);
+    if (!fs.existsSync(realPath)) {
+      fs.mkdir(realPath, { recursive: true }, (err) => {
         if (err) throw err;
-        cb(null, path.join(dest, ...filePath));
+        cb(null, realPath);
       });
     } else {
-      cb(null, path.join(dest, ...filePath));
+      cb(null, realPath);
     }
   },
   filename: function (req, file, cb) {

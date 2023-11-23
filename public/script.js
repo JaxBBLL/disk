@@ -1,19 +1,10 @@
+import { download, selectFiles, selectFolder } from "./util.js";
 const { createApp, ref, onMounted, nextTick } = Vue;
 
-function download(filePath) {
-  const a = document.createElement("a");
-  a.download;
-  a.href = filePath;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
 const setup = function () {
-  const hash = location.hash.slice(1);
+  const hash = decodeURIComponent(location.hash.slice(1));
 
   const list = ref([]);
-  const isSingle = ref(false);
   const isLoading = ref(false);
   const paths = ref(hash.split("/"));
   const isMenuVisible = ref(false);
@@ -25,10 +16,6 @@ const setup = function () {
   ]);
   const menuRef = ref(null);
 
-  if (navigator.userAgent.indexOf("Weixin") > -1) {
-    isSingle.value = true;
-  }
-
   const showMenu = (event, item) => {
     if (item) {
       menuItems.value = [
@@ -37,7 +24,8 @@ const setup = function () {
       ];
     } else {
       menuItems.value = [
-        { text: "上传文件", action: "1" },
+        { text: "上传文件", action: "0" },
+        { text: "上传文件夹", action: "1" },
         { text: "新建文件夹", action: "2" },
       ];
     }
@@ -66,32 +54,39 @@ const setup = function () {
     });
   };
 
-  const selectFiles = (cb) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    if (!isSingle.value) {
-      input.multiple = "multiple";
-    }
-    input.click();
-    input.addEventListener("change", (e) => {
-      const files = e.target.files;
-      if (!files.length) {
-        return;
-      }
-      const formData = new FormData();
-      [...files].forEach((file) => {
-        formData.append("files", file);
-      });
-      cb && cb(formData);
-    });
-  };
-
   const hideMenu = () => {
     isMenuVisible.value = false;
   };
+
+  const getBasePath = (string) => {
+    const lastIndex = string.lastIndexOf("/");
+    if (lastIndex === -1) {
+      return [];
+    }
+    const result = string.substring(0, lastIndex);
+    return result.split("/");
+  };
   const handleMenuItemClick = (item) => {
-    if (item.action === "1") {
+    if (item.action === "0") {
       handleUpload();
+    } else if (item.action === "1") {
+      selectFolder(async (files) => {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append("files", file);
+          const basePath = getBasePath(file.webkitRelativePath);
+          const pathArray = paths.value.concat(basePath);
+          isLoading.value = true;
+          await fetch(`/uploads?filePath=${pathArray.join(",")}`, {
+            method: "POST",
+            body: formData,
+            headers: {},
+          }).catch(() => {
+            isLoading.value = false;
+          });
+        }
+        getList();
+      });
     } else if (item.action === "2") {
       createFolder();
     } else if (item.action === "3") {
@@ -102,7 +97,12 @@ const setup = function () {
   };
 
   const handleUpload = () => {
-    selectFiles((formData) => {
+    selectFiles((files) => {
+      const formData = new FormData();
+      [...files].forEach((file) => {
+        formData.append("files", file);
+        formData.append("path", 1);
+      });
       isLoading.value = true;
       fetch(`/uploads?filePath=${paths.value.join(",")}`, {
         method: "POST",
@@ -214,7 +214,6 @@ const setup = function () {
 
   return {
     list,
-    isSingle,
     isLoading,
     paths,
     handleUpload,
