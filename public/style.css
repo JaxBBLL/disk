@@ -19,6 +19,10 @@ body {
 #app {
   position: relative;
 }
+.app {
+  position: relative;
+  height: 100vh;
+}
 .header {
   position: sticky;
   top: 0;
@@ -207,4 +211,24 @@ body {
   100% {
     transform: rotate(360deg);
   }
+}
+
+.menu {
+  position: fixed;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 5px 0;
+  z-index: 10000;
+}
+.menu ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.menu li {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.menu li:hover {
+  background-color: #f0f0f0;
 }

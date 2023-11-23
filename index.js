@@ -56,6 +56,7 @@ const storage = multer.diskStorage({
     }
   },
   filename: function (req, file, cb) {
+    const filePath = (req.query.filePath || "").split(",");
     // 获取上传文件的原始文件名，并处理中文乱码
     const originalname = Buffer.from(file.originalname, "latin1").toString(
       "utf8"
@@ -74,7 +75,7 @@ const storage = multer.diskStorage({
     let index = 0;
     let newFileName = generateFileName(baseName, ext, index);
 
-    while (fs.existsSync(path.join(dest, newFileName))) {
+    while (fs.existsSync(path.join(dest, ...filePath, newFileName))) {
       index++;
       newFileName = generateFileName(baseName, ext, index);
     }
