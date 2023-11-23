@@ -173,6 +173,26 @@ app.get("/delete", (req, res) => {
     .catch((err) => console.error("删除文件时发生错误:", err));
 });
 
+app.post("/rename", async (req, res) => {
+  const paths = req.body.filePath || [];
+  const oldName = req.body.oldName;
+  const name = req.body.name;
+  const oldFolderPath = path.resolve(dest, ...paths, oldName);
+  const newFolderPath = path.resolve(dest, ...paths, name);
+  try {
+    await fs.promises.rename(oldFolderPath, newFolderPath);
+    res.send({
+      code: 200,
+      data: true,
+      message: "修改成功",
+    });
+  } catch {
+    res.status(500).send({
+      message: "修改失败",
+    });
+  }
+});
+
 app.post("/create", async (req, res) => {
   const paths = req.body.filePath || [];
   const name = req.body.name;

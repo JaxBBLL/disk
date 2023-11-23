@@ -10,25 +10,25 @@ const setup = function () {
   const isMenuVisible = ref(false);
   const menuTop = ref(0);
   const menuLeft = ref(0);
-  const menuItems = ref([
-    { text: "上传文件", action: "1" },
-    { text: "新建文件夹", action: "2" },
-  ]);
+  const menuItems = ref([]);
   const menuRef = ref(null);
 
   const showMenu = (event, item) => {
+    menuItems.value = [];
     if (item) {
       menuItems.value = [
         { text: item.isDirectory ? "进入" : "下载", action: "3", value: item },
+        { text: "重命名", action: "5", value: item },
         ...(item.hasDel ? [{ text: "删除", action: "4", value: item }] : []),
       ];
-    } else {
-      menuItems.value = [
+    }
+    menuItems.value.push(
+      ...[
         { text: "上传文件", action: "0" },
         { text: "上传文件夹", action: "1" },
         { text: "新建文件夹", action: "2" },
-      ];
-    }
+      ]
+    );
     isMenuVisible.value = true;
     nextTick(() => {
       const contextMenu = menuRef.value;
@@ -70,30 +70,73 @@ const setup = function () {
     if (item.action === "0") {
       handleUpload();
     } else if (item.action === "1") {
-      selectFolder(async (files) => {
-        for (const file of files) {
-          const formData = new FormData();
-          formData.append("files", file);
-          const basePath = getBasePath(file.webkitRelativePath);
-          const pathArray = paths.value.concat(basePath);
-          isLoading.value = true;
-          await fetch(`/uploads?filePath=${pathArray.join(",")}`, {
-            method: "POST",
-            body: formData,
-            headers: {},
-          }).catch(() => {
-            isLoading.value = false;
-          });
-        }
-        getList();
-      });
+      handleUploadFolder();
     } else if (item.action === "2") {
-      createFolder();
+      hideMenu();
+      setTimeout(() => {
+        createFolder();
+      }, 100);
     } else if (item.action === "3") {
       itemClick(item.value);
     } else if (item.action === "4") {
       handleDelete(item.value.filePath);
+    } else if (item.action === "5") {
+      hideMenu();
+      setTimeout(() => {
+        handleRename(item.value);
+      }, 100);
     }
+  };
+
+  const handleRename = (item) => {
+    const input = window.prompt("新名称");
+    const text = (input || "").trim();
+    if (!text) {
+      return;
+    }
+    // 校验文件名格式
+    const illegalCharacters = /[<>:"/\\|?*]/g; // 不允许出现非法字符
+    if (illegalCharacters.test(text)) {
+      alert("文件名包含非法字符");
+      return;
+    }
+    const lastIndex = item.name.lastIndexOf(".");
+    const ext = lastIndex === -1 ? "" : item.name.slice(lastIndex);
+    fetch("/rename", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filePath: paths.value,
+        oldName: item.name,
+        name: text + ext,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        getList();
+      });
+  };
+
+  const handleUploadFolder = () => {
+    selectFolder(async (files) => {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("files", file);
+        const basePath = getBasePath(file.webkitRelativePath);
+        const pathArray = paths.value.concat(basePath);
+        isLoading.value = true;
+        await fetch(`/uploads?filePath=${pathArray.join(",")}`, {
+          method: "POST",
+          body: formData,
+          headers: {},
+        }).catch(() => {
+          isLoading.value = false;
+        });
+      }
+      getList();
+    });
   };
 
   const handleUpload = () => {
