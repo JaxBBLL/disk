@@ -4,12 +4,12 @@
 
 - [x] 多文件上传
 - [x] 文件夹上传
-- [x] 文件下载
-- [x] 文件夹打包下载
+- [x] 文件下载和文件夹打包下载
 - [x] 文件和文件夹删除
-- [x] 文件和文件夹重命名
+- [x] 重命名
 - [x] 新建文件夹
-- [x] 文件拖动进入文件夹
+- [x] 文件拖进文件夹
+- [ ] 文件移动
 
 ## 配置文件 config.json
 
@@ -23,6 +23,4 @@
 
 ## 演示图
 
-![演示图](https://raw.githubusercontent.com/JaxBBLL/disk/master/public/1.png "演示图")
-
-![演示图](https://raw.githubusercontent.com/JaxBBLL/disk/master/public/demo.gif "演示图")
+![演示图](./public/1.png "演示图")

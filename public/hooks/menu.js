@@ -13,7 +13,7 @@ export default (cb) => {
       menuItems.value = [
         ...(item.isDirectory
           ? [
-              { text: "进入", action: "0", value: item },
+              { text: "打开", action: "0", value: item },
               { text: "下载文件夹", action: "1", value: item },
             ]
           : [{ text: "下载", action: "1", value: item }]),

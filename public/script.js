@@ -50,7 +50,7 @@ const setup = function () {
         getList();
       },
       0: () => {
-        entryDirectory(item);
+        entryDirectory(item.value);
       },
       1: () => {
         handleDownload(item.value);
@@ -62,7 +62,10 @@ const setup = function () {
         }, 100);
       },
       3: () => {
-        handleDelete(item.value.filePath);
+        handleMenuHide();
+        setTimeout(() => {
+          handleDelete(item.value.filePath);
+        }, 100);
       },
       4: () => {
         handleUpload();

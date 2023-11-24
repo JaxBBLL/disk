@@ -112,6 +112,7 @@ app.post("/uploads", upload.array("files"), (req, res) => {
 
 app.post("/list", async (req, res) => {
   const paths = req.body.filePath || [];
+  const isDirectory = req.body.isDirectory || false;
   try {
     const files = await readdir(path.join(dest, ...paths));
     if (!files.length) {
@@ -136,7 +137,8 @@ app.post("/list", async (req, res) => {
         hasDel,
       });
     }
-    return res.send({ code: 200, data: ret });
+    const data = isDirectory ? ret.filter((i) => i.isDirectory) : ret;
+    return res.send({ code: 200, data });
   } catch (err) {
     console.error(err);
     return res.status(500).send({ message: "读取目录失败" });
