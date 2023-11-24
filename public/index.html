@@ -11,7 +11,7 @@
   </head>
   <body>
     <div id="app" v-cloak>
-      <div class="app" @contextmenu.prevent="showMenu">
+      <div class="app" @contextmenu.prevent="handleMenuShow">
         <header class="header">
           <div class="header-main">
             <div class="bread">
@@ -35,7 +35,11 @@
                 class="list-item"
                 v-for="(item,index) in list"
                 :key="index"
-                @contextmenu.prevent.stop="showMenu($event, item)"
+                @contextmenu.prevent.stop="handleMenuShow($event, item)"
+                :draggable="true"
+                @dragstart="dragStart(item,$event)"
+                @dragover.prevent
+                @drop="drop(item)"
               >
                 <div class="file-name">
                   <span

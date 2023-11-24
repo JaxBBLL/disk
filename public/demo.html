@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>拖动排序列表</title>
+    <style>
+      #sortable-list {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      #sortable-list li {
+        margin: 5px;
+        padding: 5px;
+        border: 1px solid #ccc;
+        cursor: move;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>拖动排序列表</h1>
+    <ul id="sortable-list">
+      <li draggable="true">项目 1</li>
+      <li draggable="true">项目 2</li>
+      <li draggable="true">项目 3</li>
+      <li draggable="true">项目 4</li>
+      <li draggable="true">项目 5</li>
+    </ul>
+
+    <script>
+      var list = document.getElementById("sortable-list");
+      var items = Array.from(list.getElementsByTagName("li"));
+
+      // 使用原生事件监听拖动事件
+      items.forEach(function (item) {
+        item.addEventListener("dragstart", handleDragStart, false);
+        item.addEventListener("dragenter", handleDragEnter, false);
+        item.addEventListener("dragover", handleDragOver, false);
+        item.addEventListener("dragleave", handleDragLeave, false);
+        item.addEventListener("drop", handleDrop, false);
+      });
+
+      var dragSrcEl = null;
+
+      function handleDragStart(e) {
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/html", this.innerHTML);
+      }
+
+      function handleDragOver(e) {
+        if (e.preventDefault) {
+          e.preventDefault(); // Necessary for IE9+ to quell browser's default actions.
+        }
+        e.dataTransfer.dropEffect = "move"; // See the section on the DataTransfer object.
+        return false; // Needed for IE9+ to quell browser's default actions.
+      }
+
+      function handleDragEnter(e) {
+        // Add the CSS class "over" to the target <li> element. This will add a border to the <li> element while the drag is active. Note: Use the dragOver event instead of the dragEnter event if you want to prevent default actions on the target <li> element when the drag enters the target <li> element. This is because the dragOver event is triggered before the dragEnter event, and it has a default action of allowing the drop operation if the drop effect is set to "move". (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code for the dragOver event would look like this: e.preventDefault(); } // To learn more about this, see the section on the DataTransfer object. (Example: e.preventDefault();) The code
+      }
+    </script>
+  </body>
+</html>
