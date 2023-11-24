@@ -6,14 +6,16 @@
 
 config.json
 
-```json
+```js
 {
-  "dest": "D:/html/release", // 根目录所在，可以是绝对路径也可以是相对路径
+  "dest": "D:/html/release", // 根目录所在，绝对路径或相对路径
   "hasDel": true, // 是否能删除
   "port": 3000 // 端口
 }
 ```
 
 ## 演示图
+
+![演示图](https://raw.githubusercontent.com/JaxBBLL/disk/master/public/1.png "演示图")
 
 ![演示图](https://raw.githubusercontent.com/JaxBBLL/disk/master/public/demo.gif "演示图")
