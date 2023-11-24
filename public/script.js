@@ -17,16 +17,23 @@ const setup = function () {
     menuItems.value = [];
     if (item) {
       menuItems.value = [
-        { text: item.isDirectory ? "进入" : "下载", action: "3", value: item },
-        { text: "重命名", action: "5", value: item },
-        ...(item.hasDel ? [{ text: "删除", action: "4", value: item }] : []),
+        ...(item.isDirectory
+          ? [
+              { text: "进入", action: "0", value: item },
+              { text: "下载文件夹", action: "1", value: item },
+            ]
+          : [{ text: "下载", action: "1", value: item }]),
+        { text: "重命名", action: "2", value: item },
+        ...(item.hasDel ? [{ text: "删除", action: "3", value: item }] : []),
       ];
+    } else {
+      menuItems.value.push({ text: "刷新", action: "-1" });
     }
     menuItems.value.push(
       ...[
-        { text: "上传文件", action: "0" },
-        { text: "上传文件夹", action: "1" },
-        { text: "新建文件夹", action: "2" },
+        { text: "上传文件", action: "4" },
+        { text: "上传文件夹", action: "5" },
+        { text: "新建文件夹", action: "6" },
       ]
     );
     isMenuVisible.value = true;
@@ -67,25 +74,39 @@ const setup = function () {
     return result.split("/");
   };
   const handleMenuItemClick = (item) => {
-    if (item.action === "0") {
-      handleUpload();
-    } else if (item.action === "1") {
-      handleUploadFolder();
-    } else if (item.action === "2") {
-      hideMenu();
-      setTimeout(() => {
-        createFolder();
-      }, 100);
-    } else if (item.action === "3") {
-      itemClick(item.value);
-    } else if (item.action === "4") {
-      handleDelete(item.value.filePath);
-    } else if (item.action === "5") {
-      hideMenu();
-      setTimeout(() => {
-        handleRename(item.value);
-      }, 100);
-    }
+    const map = {
+      "-1": () => {
+        getList();
+      },
+      0: () => {
+        entryDirectory(item);
+      },
+      1: () => {
+        handleDownload(item.value);
+      },
+      2: () => {
+        hideMenu();
+        setTimeout(() => {
+          handleRename(item.value);
+        }, 100);
+      },
+      3: () => {
+        handleDelete(item.value.filePath);
+      },
+      4: () => {
+        handleUpload();
+      },
+      5: () => {
+        handleUploadFolder();
+      },
+      6: () => {
+        hideMenu();
+        setTimeout(() => {
+          createFolder();
+        }, 100);
+      },
+    };
+    map[item.action]();
   };
 
   const handleRename = (item) => {
@@ -201,13 +222,12 @@ const setup = function () {
     getList();
   };
 
-  const itemClick = (item) => {
-    if (item.isDirectory) {
-      entryDirectory(item);
-    } else {
-      const path = `/download?filePath=${item.filePath}`;
-      download(path);
-    }
+  const handleDownload = (item) => {
+    download(
+      `/${item.isDirectory ? "downloadFolder" : "download"}?filePath=${
+        item.filePath
+      }`
+    );
   };
 
   const createFolder = () => {
@@ -262,7 +282,7 @@ const setup = function () {
     handleUpload,
     entryDirectory,
     gotoFolder,
-    itemClick,
+    handleDownload,
     createFolder,
     isMenuVisible,
     showMenu,

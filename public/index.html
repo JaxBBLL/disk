@@ -31,7 +31,7 @@
           <section v-if="!isLoading">
             <div class="list" v-if="list.length">
               <div
-                @click="itemClick(item)"
+                @click="item.isDirectory ? entryDirectory(item) : handleDownload(item)"
                 class="list-item"
                 v-for="(item,index) in list"
                 :key="index"

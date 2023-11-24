@@ -1,5 +1,3 @@
-const express = require("express");
-const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -8,6 +6,9 @@ const readdir = util.promisify(fs.readdir);
 const stat = util.promisify(fs.stat);
 const exists = util.promisify(fs.exists);
 const mkdir = util.promisify(fs.mkdir);
+const express = require("express");
+const multer = require("multer");
+const archiver = require("archiver");
 
 const defaultConfig = {
   dest: "./",
@@ -156,6 +157,47 @@ app.get("/download", (req, res) => {
   // 将文件流式传输到响应中
   const stream = fs.createReadStream(realFilePath);
   stream.pipe(res);
+});
+
+app.get("/downloadFolder", (req, res) => {
+  const filePath = req.query.filePath;
+  const folderPath = path.join(dest, filePath);
+  let zipFileName = `${folderPath}.zip`;
+
+  while (fs.existsSync(zipFileName)) {
+    // 确保文件名唯一，不覆盖现有文件
+    const random = Math.random().toString(16).replace("0.", "");
+    zipFileName = `${folderPath}_${random}.zip`;
+  }
+
+  // 创建一个新的压缩包
+  const output = fs.createWriteStream(zipFileName);
+  const archive = archiver("zip", {
+    zlib: { level: 9 }, // 压缩级别（0-9）
+  });
+
+  output.on("close", () => {
+    console.log(`${archive.pointer()} total bytes`);
+    console.log("压缩完成");
+    res.download(zipFileName, zipFileName, (err) => {
+      if (err) {
+        res.status(500).send("下载失败");
+      }
+      // 删除生成的临时压缩包
+      fs.unlinkSync(zipFileName);
+    });
+  });
+
+  archive.on("error", (err) => {
+    throw err;
+  });
+
+  // 将压缩包输出到 output 流
+  archive.pipe(output);
+
+  // 将文件夹中的所有文件添加到压缩包
+  archive.directory(folderPath, false);
+  archive.finalize();
 });
 
 app.get("/delete", (req, res) => {

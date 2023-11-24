@@ -16,4 +16,4 @@ config.json
 
 ## 演示图
 
-![演示图](./public/demo.gif "演示图")
+![演示图](https://raw.githubusercontent.com/JaxBBLL/disk/master/public/demo.gif "演示图")
