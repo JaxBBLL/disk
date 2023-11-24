@@ -209,12 +209,16 @@ const setup = function () {
     getList();
   };
 
-  const handleDownload = (item) => {
-    download(
-      `/${item.isDirectory ? "downloadFolder" : "download"}?filePath=${
-        item.filePath
-      }`
-    );
+  const handleDownload = (item, isPreviewFist = false) => {
+    if (isPreviewFist) {
+      window.open(`/preview?filePath=${item.filePath}`);
+    } else {
+      download(
+        `/${item.isDirectory ? "downloadFolder" : "download"}?filePath=${
+          item.filePath
+        }`
+      );
+    }
   };
 
   const createFolder = () => {

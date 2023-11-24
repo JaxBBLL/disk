@@ -9,6 +9,7 @@ const mkdir = util.promisify(fs.mkdir);
 const express = require("express");
 const multer = require("multer");
 const archiver = require("archiver");
+const mime = require("mime");
 
 const defaultConfig = {
   dest: "./",
@@ -159,6 +160,32 @@ app.get("/download", (req, res) => {
   // 将文件流式传输到响应中
   const stream = fs.createReadStream(realFilePath);
   stream.pipe(res);
+});
+
+app.get("/preview", (req, res) => {
+  const filePath = req.query.filePath;
+  const realFilePath = path.join(dest, filePath);
+
+  const stream = fs.createReadStream(realFilePath);
+
+  stream.on("open", () => {
+    const stat = fs.statSync(realFilePath);
+    const fileExtension = path.extname(realFilePath);
+    let contentType = mime.getType(fileExtension) || "application/octet-stream"; // 默认为二进制流
+
+    res.writeHead(200, {
+      "Content-Type": contentType + "; charset=utf-8",
+      "Content-Length": stat.size,
+      "Content-Disposition": "inline", // 在浏览器中打开文件，如果需要下载则为'attachment'
+    });
+    // 将文件流通过管道传输到响应中
+    stream.pipe(res);
+  });
+
+  stream.on("error", (err) => {
+    res.statusCode = 500;
+    res.end(`Error getting the file: ${err}`);
+  });
 });
 
 app.get("/downloadFolder", (req, res) => {
