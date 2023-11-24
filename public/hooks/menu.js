@@ -55,7 +55,7 @@ export default (cb) => {
     });
   };
 
-  const hideMenu = () => {
+  const handleMenuHide = () => {
     isMenuVisible.value = false;
   };
 
@@ -64,16 +64,17 @@ export default (cb) => {
   };
 
   onMounted(() => {
-    window.addEventListener("click", hideMenu);
+    window.addEventListener("click", handleMenuHide);
   });
 
   return {
     isMenuVisible,
-    handleMenuShow,
     menuItems,
     menuTop,
     menuLeft,
-    handleMenuItemClick,
     menuRef,
+    handleMenuShow,
+    handleMenuHide,
+    handleMenuItemClick,
   };
 };

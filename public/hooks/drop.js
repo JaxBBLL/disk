@@ -5,17 +5,27 @@ export default (cb) => {
 
   const dragStart = (item, event) => {
     origin = item;
-    event.dataTransfer.effectAllowed = "move";
-    // event.dataTransfer.setData("text/plain", item);
   };
 
-  const drop = (target) => {
-    cb(origin, target);
+  const drop = (target, event) => {
+    if (target.isDirectory) {
+      cb(origin, target);
+    }
     origin = null;
+  };
+
+  const dropOver = (target, event) => {
+    event.preventDefault();
+    if (target.isDirectory) {
+      event.dataTransfer.dropEffect = "move";
+    } else {
+      event.dataTransfer.dropEffect = "none";
+    }
   };
 
   return {
     dragStart,
     drop,
+    dropOver,
   };
 };

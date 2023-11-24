@@ -216,11 +216,19 @@ app.get("/delete", (req, res) => {
 });
 
 app.post("/rename", async (req, res) => {
-  const paths = req.body.filePath || [];
-  const oldName = req.body.oldName;
-  const name = req.body.name;
-  const oldFolderPath = path.resolve(dest, ...paths, oldName);
-  const newFolderPath = path.resolve(dest, ...paths, name);
+  const basePath = req.body.basePath || [];
+  const oldPath = req.body.oldPath;
+  const newPath = req.body.newPath;
+  const oldFolderPath = path.resolve(dest, ...basePath, oldPath);
+  const newFolderPath = path.resolve(dest, ...basePath, newPath);
+  if (await exists(newFolderPath)) {
+    res.send({
+      code: 200,
+      isExit: 1,
+      message: "目录存在相同文件名",
+    });
+    return;
+  }
   try {
     await fs.promises.rename(oldFolderPath, newFolderPath);
     res.send({

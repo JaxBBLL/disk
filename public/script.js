@@ -10,14 +10,36 @@ const setup = function () {
   const isLoading = ref(false);
   const paths = ref(hash.split("/"));
 
-  const { dragStart, drop } = useDrop((origin, target) => {
-    console.log(origin, target);
+  const { dragStart, drop, dropOver } = useDrop((origin, target) => {
+    if (!target.isDirectory) {
+      return;
+    }
+    fetch("/rename", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        basePath: paths.value,
+        oldPath: origin.name,
+        newPath: target.name + "/" + origin.name,
+      }),
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.isExit) {
+          alert(res.message);
+        } else {
+          getList();
+        }
+      });
   });
 
   const {
     isMenuVisible,
     handleMenuItemClick,
     handleMenuShow,
+    handleMenuHide,
     menuItems,
     menuTop,
     menuLeft,
@@ -34,7 +56,7 @@ const setup = function () {
         handleDownload(item.value);
       },
       2: () => {
-        hideMenu();
+        handleMenuHide();
         setTimeout(() => {
           handleRename(item.value);
         }, 100);
@@ -49,7 +71,7 @@ const setup = function () {
         handleUploadFolder();
       },
       6: () => {
-        hideMenu();
+        handleMenuHide();
         setTimeout(() => {
           createFolder();
         }, 100);
@@ -87,14 +109,18 @@ const setup = function () {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        filePath: paths.value,
-        oldName: item.name,
-        name: text + ext,
+        basePath: paths.value,
+        oldPath: item.name,
+        newPath: text + ext,
       }),
     })
       .then((res) => res.json())
       .then((res) => {
-        getList();
+        if (res.isExit) {
+          alert(res.message);
+        } else {
+          getList();
+        }
       });
   };
 
@@ -247,6 +273,7 @@ const setup = function () {
     menuRef,
     dragStart,
     drop,
+    dropOver,
   };
 };
 
