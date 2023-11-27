@@ -1,26 +1,24 @@
 <template>
-  <div @contextmenu="showMenu">
-    <slot></slot>
-    <Teleport to="body">
-      <transition name="menu-fade" @after-leave="menuHide">
+  <slot :handle="showMenu"></slot>
+  <Teleport to="body">
+    <transition name="menu-fade" @after-leave="menuHide">
+      <div
+        class="menu"
+        ref="menuRef"
+        v-show="menuVisible"
+        :style="{ top: `${menuPosition.y}px`, left: `${menuPosition.x}px` }"
+      >
         <div
-          class="menu"
-          ref="menuRef"
-          v-if="menuVisible"
-          :style="{ top: `${menuPosition.y}px`, left: `${menuPosition.x}px` }"
+          class="menu-item"
+          v-for="(item, index) in menu"
+          :key="index"
+          @click.stop="handleMenuItemClick($event, item)"
         >
-          <div
-            class="menu-item"
-            v-for="(item, index) in menu"
-            :key="index"
-            @click.stop="handleMenuItemClick($event, item)"
-          >
-            {{ item.label }}
-          </div>
+          {{ item.label }}
         </div>
-      </transition>
-    </Teleport>
-  </div>
+      </div>
+    </transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -29,7 +27,7 @@ import { ref, reactive, nextTick, onMounted, onUnmounted, defineEmits } from 'vu
 const menuVisible = ref(false)
 const menuPosition = reactive({ x: 0, y: 0 })
 const menuRef = ref(null)
-const emits = defineEmits(['action', 'contextmenu'])
+const emits = defineEmits(['action', 'before'])
 
 defineProps({
   menu: {
@@ -39,7 +37,7 @@ defineProps({
 })
 
 const showMenu = (e) => {
-  emits('contextmenu', e)
+  emits('before', e)
   e.preventDefault()
   e.stopPropagation()
   menuVisible.value = true
@@ -91,7 +89,6 @@ onUnmounted(() => {
 .menu {
   position: fixed;
   background-color: #fff;
-  border: 1px solid var(--border-color);
   padding: 5px 0;
   z-index: 2147483647;
   box-shadow: 0 1px 6px 0px rgba(100, 100, 100, 0.6);
@@ -99,12 +96,13 @@ onUnmounted(() => {
 }
 .menu .menu-item {
   min-width: 60px;
-  padding: 5px 12px;
+  padding: 6px 14px;
   cursor: pointer;
   font-size: 14px;
 }
 .menu .menu-item:hover {
-  background-color: #f2f2f2;
+  color: #fff;
+  background-color: var(--primary-color);
 }
 .menu-fade-enter-active,
 .menu-fade-leave-active {

@@ -1,79 +1,87 @@
 <template>
-  <ContextMenu :menu="menuItems" @action="menuAction" @contextmenu="handleContextmenu()">
-    <div class="app">
-      <header class="header">
-        <div class="header-main">
-          <div class="bread">
-            <span
-              v-for="(item, index) in paths"
-              @click="gotoFolder(index, index === paths.length - 1)"
-              class="bread-item"
-              :key="index"
-              >{{ item || '根目录' }}</span
-            >
-          </div>
-          <span class="btn-upload" @click="handleUpload"> 上传文件 </span>
-        </div>
-      </header>
-      <main class="main">
-        <section v-if="!isLoading">
-          <div class="list" v-if="list.length">
-            <template v-for="(item, index) in list" :key="index">
-              <ContextMenu
-                :menu="menuItems"
-                @action="menuAction"
-                @contextmenu="handleContextmenu(item)"
+  <ContextMenu :menu="menuItems" @action="menuAction" @before="handleBeforeShow()">
+    <template v-slot="{ handle }">
+      <div class="app" @contextmenu="handle">
+        <header class="header">
+          <div class="header-main">
+            <div class="bread">
+              <span
+                v-for="(item, index) in paths"
+                @click="gotoFolder(index, index === paths.length - 1)"
+                class="bread-item"
+                :key="index"
+                >{{ item || '根目录' }}</span
               >
-                <div
-                  @click="item.isDirectory ? entryDirectory(item) : handleDownload(item, true)"
-                  class="list-item"
-                  :draggable="true"
-                  @dragstart="dragStart(item, $event)"
-                  @dragover="dropOver(item, $event)"
-                  @drop="drop(item, $event)"
+            </div>
+            <span class="btn-upload" @click="handleUpload"> 上传文件 </span>
+          </div>
+        </header>
+        <main class="main">
+          <section v-if="!isLoading">
+            <div class="list" v-if="list.length">
+              <template v-for="(item, index) in list" :key="index">
+                <ContextMenu
+                  :menu="menuItems"
+                  @action="menuAction"
+                  @before="handleBeforeShow(item)"
                 >
-                  <div class="file-name">
-                    <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
-                    <svg
-                      v-else
-                      class="icon"
-                      :class="item.icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 512 512"
-                      fill="#fee082"
+                  <template v-slot="{ handle }">
+                    <div
+                      @click="item.isDirectory ? entryDirectory(item) : handleDownload(item, true)"
+                      class="list-item"
+                      :draggable="true"
+                      @dragstart="dragStart(item, $event)"
+                      @dragover="dropOver(item, $event)"
+                      @drop="drop(item, $event)"
+                      @contextmenu="handle"
                     >
-                      <path
-                        d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
-                      ></path>
-                    </svg>
-                    <div>{{ item.name }}</div>
-                  </div>
-                  <div v-if="!item.isDirectory" style="margin: 0 20px; color: var(--gray-color)">
-                    {{ item.size }} KB
-                  </div>
-                  <div style="color: var(--gray-color)">{{ item.birthtime }}</div>
-                </div>
-              </ContextMenu>
-            </template>
+                      <div class="file-name">
+                        <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
+                        <svg
+                          v-else
+                          class="icon"
+                          :class="item.icon"
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 512 512"
+                          fill="#fee082"
+                        >
+                          <path
+                            d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
+                          ></path>
+                        </svg>
+                        <div>{{ item.name }}</div>
+                      </div>
+                      <div
+                        v-if="!item.isDirectory"
+                        style="margin: 0 20px; color: var(--gray-color)"
+                      >
+                        {{ item.size }} KB
+                      </div>
+                      <div style="color: var(--gray-color)">{{ item.birthtime }}</div>
+                    </div>
+                  </template>
+                </ContextMenu>
+              </template>
+            </div>
+            <div class="list" v-else>
+              <div style="text-align: center; padding: 10px">无文件</div>
+            </div>
+          </section>
+          <div class="lds-roller" v-else>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
           </div>
-          <div class="list" v-else>
-            <div style="text-align: center; padding: 10px">无文件</div>
-          </div>
-        </section>
-        <div class="lds-roller" v-else>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-          <div></div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </template>
   </ContextMenu>
 </template>
 
@@ -121,7 +129,7 @@ const menuItems = ref([
   { label: '新建文件夹', action: '6' }
 ])
 
-const handleContextmenu = (item) => {
+const handleBeforeShow = (item) => {
   menuItems.value = []
   if (item) {
     menuItems.value = [
@@ -309,7 +317,7 @@ const gotoFolder = (index, isLast) => {
 
 const handleDownload = (item, isPreviewFist = false) => {
   if (isPreviewFist) {
-    window.open(`/api/preview?filePath=${item.filePath}`)
+    window.open(`/api/preview/${item.name}?filePath=${item.filePath}`)
   } else {
     download(`/api/${item.isDirectory ? 'downloadFolder' : 'download'}?filePath=${item.filePath}`)
   }
@@ -356,225 +364,3 @@ const handleDelete = (filePath) => {
 
 getList()
 </script>
-<style>
-:root {
-  --primary-color: #38f;
-  --light-color: rgb(186, 215, 255);
-  --danger-color: #f66;
-  --gray-color: #666;
-  --border-color: #f5f5f5;
-}
-html {
-  height: 100%;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Open Sans',
-    'Helvetica Neue',
-    sans-serif;
-}
-body {
-  margin: 0;
-  font-size: 12px;
-}
-
-#app {
-  position: relative;
-}
-.app {
-  position: relative;
-  height: 100vh;
-}
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background-color: #fff;
-  padding: 5px;
-  box-shadow: 0 1px 3px 0px rgba(200, 200, 200, 0.75);
-}
-.header-main {
-  display: flex;
-  align-items: center;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 10px;
-}
-.main {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 0 10px;
-}
-.bread {
-  display: flex;
-  align-items: center;
-  margin-right: auto;
-}
-
-.bread-item:not(:first-child):before {
-  content: '>';
-  font-family: serif;
-  margin-right: 5px;
-  margin-left: 5px;
-}
-
-.bread-item:not(:last-child) {
-  color: var(--primary-color);
-  cursor: pointer;
-}
-
-.btn-create {
-  color: var(--primary-color);
-  margin-right: 20px;
-  cursor: pointer;
-}
-.btn-upload {
-  display: inline-block;
-  border: 1px solid var(--primary-color);
-  background-color: var(--primary-color);
-  padding: 5px 12px;
-  cursor: pointer;
-  color: #fff;
-}
-.btn-upload:hover {
-  opacity: 0.8;
-}
-
-.icon {
-  margin-right: 4px;
-}
-
-.btn {
-  cursor: pointer;
-  color: var(--primary-color);
-  text-decoration: none;
-}
-.btn:hover {
-  color: var(--primary-color);
-}
-.btn-danger {
-  color: var(--danger-color);
-}
-.btn-danger:hover {
-  color: var(--danger-color);
-}
-.list {
-  margin-top: 10px;
-  border: 1px solid var(--light-color);
-}
-.list-item {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  color: inherit;
-  text-decoration: none;
-  padding: 8px 5px;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-.list > div + div {
-  border-top: 1px solid var(--light-color);
-}
-.list-item:hover {
-  color: var(--primary-color);
-}
-.file-name {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-right: auto;
-  font-size: 14px;
-}
-
-.lds-roller {
-  display: block;
-  position: relative;
-  width: 60px;
-  height: 60px;
-  margin: 40px auto;
-}
-.lds-roller div {
-  animation: lds-roller 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
-  transform-origin: 40px 40px;
-}
-.lds-roller div:after {
-  content: ' ';
-  display: block;
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  margin: -4px 0 0 -4px;
-}
-.lds-roller div:nth-child(1) {
-  animation-delay: -0.036s;
-}
-.lds-roller div:nth-child(1):after {
-  top: 63px;
-  left: 63px;
-}
-.lds-roller div:nth-child(2) {
-  animation-delay: -0.072s;
-}
-.lds-roller div:nth-child(2):after {
-  top: 68px;
-  left: 56px;
-}
-.lds-roller div:nth-child(3) {
-  animation-delay: -0.108s;
-}
-.lds-roller div:nth-child(3):after {
-  top: 71px;
-  left: 48px;
-}
-.lds-roller div:nth-child(4) {
-  animation-delay: -0.144s;
-}
-.lds-roller div:nth-child(4):after {
-  top: 72px;
-  left: 40px;
-}
-.lds-roller div:nth-child(5) {
-  animation-delay: -0.18s;
-}
-.lds-roller div:nth-child(5):after {
-  top: 71px;
-  left: 32px;
-}
-.lds-roller div:nth-child(6) {
-  animation-delay: -0.216s;
-}
-.lds-roller div:nth-child(6):after {
-  top: 68px;
-  left: 24px;
-}
-.lds-roller div:nth-child(7) {
-  animation-delay: -0.252s;
-}
-.lds-roller div:nth-child(7):after {
-  top: 63px;
-  left: 17px;
-}
-.lds-roller div:nth-child(8) {
-  animation-delay: -0.288s;
-}
-.lds-roller div:nth-child(8):after {
-  top: 56px;
-  left: 12px;
-}
-@keyframes lds-roller {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-</style>

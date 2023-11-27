@@ -156,7 +156,8 @@ app.get('/api/download', (req, res) => {
   stream.pipe(res)
 })
 
-app.get('/api/preview', (req, res) => {
+app.get('/api/preview/:filename', (req, res) => {
+  const filename = req.params.filename || ''
   const filePath = req.query.filePath
   const realFilePath = path.join(dest, filePath)
 
