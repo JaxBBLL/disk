@@ -1,31 +1,29 @@
-const { ref } = Vue;
-
 export default (cb) => {
-  let origin = null;
+  let origin = null
 
   const dragStart = (item, event) => {
-    origin = item;
-  };
+    origin = item
+  }
 
   const drop = (target, event) => {
     if (target.isDirectory) {
-      cb(origin, target);
+      cb(origin, target)
     }
-    origin = null;
-  };
+    origin = null
+  }
 
   const dropOver = (target, event) => {
-    event.preventDefault();
+    event.preventDefault()
     if (target.isDirectory) {
-      event.dataTransfer.dropEffect = "move";
+      event.dataTransfer.dropEffect = 'move'
     } else {
-      event.dataTransfer.dropEffect = "none";
+      event.dataTransfer.dropEffect = 'none'
     }
-  };
+  }
 
   return {
     dragStart,
     drop,
-    dropOver,
-  };
-};
+    dropOver
+  }
+}
