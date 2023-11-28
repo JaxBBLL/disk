@@ -80,6 +80,23 @@
             <div></div>
           </div>
         </main>
+        <dialog ref="dialog" :open="isOpen">
+          <section style="display: flex">
+            <div v-for="(item, index) in treeList" :key="index">
+              <div class="dialog-list">
+                <div
+                  class="dialog-item"
+                  v-for="cur in item"
+                  :key="cur"
+                  @click="dialogClick(cur, index)"
+                >
+                  {{ cur.name }}
+                </div>
+              </div>
+            </div>
+          </section>
+          <span @click="dialogClose" class="btn-upload" type="button">关闭</span>
+        </dialog>
       </div>
     </template>
   </ContextMenu>
@@ -96,6 +113,10 @@ const hash = decodeURIComponent(location.hash.slice(1))
 const list = ref([])
 const isLoading = ref(false)
 const paths = ref(hash.split('/'))
+
+const isOpen = ref(false)
+const treeList = ref([])
+const dialog = ref(null)
 
 const { dragStart, drop, dropOver } = useDrop((origin, target) => {
   if (!target.isDirectory) {
@@ -140,6 +161,7 @@ const handleBeforeShow = (item) => {
           ]
         : [{ label: '下载', action: '1', value: item }]),
       { label: '重命名', action: '2', value: item },
+      { label: '移动', action: '7', value: item },
       ...(item.hasDel ? [{ label: '删除', action: '3', value: item }] : [])
     ]
   } else {
@@ -184,9 +206,54 @@ const menuAction = (event, item) => {
       setTimeout(() => {
         createFolder()
       }, 100)
+    },
+    7: () => {
+      dialog.value.showModal()
+      treeList.value = []
+
+      fetch(`/api/list`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          isDirectory: true
+        })
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.code === 200) {
+            treeList.value.push(res.data)
+          }
+        })
+        .finally(() => {})
     }
   }
   map[item.action]()
+}
+
+const dialogClick = (item, index) => {
+  console.log(item)
+  fetch(`/api/list`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      isDirectory: true,
+      filePath: item.filePath.split('/')
+    })
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      if (res.code === 200) {
+        treeList.value.splice(index + 1)
+        if (res.data.length) {
+          treeList.value.push(res.data)
+        }
+      }
+    })
+    .finally(() => {})
 }
 
 const getBasePath = (string) => {
@@ -364,5 +431,30 @@ const handleDelete = (filePath) => {
   }
 }
 
+const dialogClose = () => {
+  dialog.value.close()
+}
+
 getList()
 </script>
+<style scoped>
+dialog {
+  min-width: 300px;
+  min-height: 200px;
+  padding: 15px;
+  border-radius: 8px;
+  border: none;
+  background-color: #fff;
+}
+dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+dialog .dialog-list {
+  width: 120px;
+}
+dialog .dialog-item {
+  padding: 4px 10px;
+  border: 1px solid var(--primary-color);
+  margin-top: -1px;
+}
+</style>
