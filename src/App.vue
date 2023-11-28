@@ -199,7 +199,10 @@ const getBasePath = (string) => {
 }
 
 const handleRename = (item) => {
-  const input = window.prompt('新名称')
+  const lastIndex = item.name.lastIndexOf('.')
+  const ext = lastIndex === -1 ? '' : item.name.slice(lastIndex)
+  const name = lastIndex === -1 ? item.name : item.name.slice(0, lastIndex)
+  const input = window.prompt('新名称', name)
   const text = (input || '').trim()
   if (!text) {
     return
@@ -210,8 +213,7 @@ const handleRename = (item) => {
     alert('文件名包含非法字符')
     return
   }
-  const lastIndex = item.name.lastIndexOf('.')
-  const ext = lastIndex === -1 ? '' : item.name.slice(lastIndex)
+
   fetch('/api/rename', {
     method: 'POST',
     headers: {
