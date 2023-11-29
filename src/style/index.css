@@ -210,7 +210,6 @@ body {
 
 .dialog-wrap {
   min-width: 400px;
-  min-height: 200px;
   border: none;
   background-color: #fff;
   outline: none;
@@ -232,7 +231,6 @@ body {
   overflow: auto;
 }
 .dialog-wrap .dialog-list + .dialog-list {
-  /* border-left-color: #fff; */
   margin-left: -1px;
 }
 .dialog-wrap .dialog-item {

@@ -234,7 +234,7 @@ const menuAction = (event, item) => {
       })
         .then((res) => res.json())
         .then((res) => {
-          if (res.code === 200) {
+          if (res.code === 200 && res.data.length) {
             treeList.value.push(res.data)
           }
         })
