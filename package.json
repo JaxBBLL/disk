@@ -16,7 +16,7 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "start": "concurrently \"vite\" \"npm run dev:server\"",
+    "start": "concurrently \"npm run dev:server\" \"vite\"",
     "build:client": "vite build",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
     "format": "prettier --write src/",

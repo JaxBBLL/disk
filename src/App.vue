@@ -89,6 +89,7 @@
                 v-for="cur in item"
                 :key="cur"
                 @click="dialogClick(cur, index)"
+                :title="cur.name"
               >
                 {{ cur.name }}
               </div>
@@ -213,32 +214,14 @@ const menuAction = (event, item) => {
     },
     7: () => {
       currentMoveItem.value = item.value
-      treeList.value = [
-        [
-          {
-            name: '根目录',
-            filePath: ''
-          }
-        ]
-      ]
+      const rootItem = {
+        name: '根目录',
+        filePath: ''
+      }
+      treeList.value = [[rootItem]]
       selectFolderPath.value = ''
       dialogShow()
-      fetch(`/api/list`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          isDirectory: true
-        })
-      })
-        .then((res) => res.json())
-        .then((res) => {
-          if (res.code === 200 && res.data.length) {
-            treeList.value.push(res.data)
-          }
-        })
-        .finally(() => {})
+      dialogClick(rootItem, 0)
     }
   }
   map[item.action]()

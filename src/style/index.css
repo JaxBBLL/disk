@@ -225,7 +225,8 @@ body {
   align-items: flex-start;
 }
 .dialog-wrap .dialog-list {
-  width: 120px;
+  min-width: 120px;
+  max-width: 200px;
   border: 1px solid var(--primary-color);
   max-height: 300px;
   overflow: auto;
@@ -236,6 +237,10 @@ body {
 .dialog-wrap .dialog-item {
   padding: 4px 10px;
   cursor: pointer;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  word-break: break-all;
+  white-space: nowrap;
 }
 .dialog-wrap .dialog-item.active {
   background: var(--light-color);
