@@ -13,7 +13,7 @@
                 >{{ item || '根目录' }}</span
               >
             </div>
-            <span class="btn-upload" @click="handleUpload"> 上传文件 </span>
+            <span class="btn btn-primary" @click="handleUpload"> 上传文件 </span>
           </div>
         </header>
         <main class="main">
@@ -80,22 +80,24 @@
             <div></div>
           </div>
         </main>
-        <dialog ref="dialog" :open="isOpen">
-          <section style="display: flex">
-            <div v-for="(item, index) in treeList" :key="index">
-              <div class="dialog-list">
-                <div
-                  class="dialog-item"
-                  v-for="cur in item"
-                  :key="cur"
-                  @click="dialogClick(cur, index)"
-                >
-                  {{ cur.name }}
-                </div>
+        <dialog class="dialog-wrap" ref="dialog" :open="isOpen">
+          <section class="dialog-content">
+            <div class="dialog-list" v-for="(item, index) in treeList" :key="index">
+              <div
+                class="dialog-item"
+                :class="selectFolderPath == cur.filePath ? 'active' : ''"
+                v-for="cur in item"
+                :key="cur"
+                @click="dialogClick(cur, index)"
+              >
+                {{ cur.name }}
               </div>
             </div>
           </section>
-          <span @click="dialogClose" class="btn-upload" type="button">关闭</span>
+          <footer class="dialog-footer">
+            <span @click="dialogClose" class="btn" type="button">关闭</span>
+            <span @click="dialogSubmit" class="btn btn-primary" type="button">确定</span>
+          </footer>
         </dialog>
       </div>
     </template>
@@ -117,6 +119,8 @@ const paths = ref(hash.split('/'))
 const isOpen = ref(false)
 const treeList = ref([])
 const dialog = ref(null)
+const selectFolderPath = ref('')
+const currentMoveItem = ref(null)
 
 const { dragStart, drop, dropOver } = useDrop((origin, target) => {
   if (!target.isDirectory) {
@@ -208,9 +212,17 @@ const menuAction = (event, item) => {
       }, 100)
     },
     7: () => {
-      dialog.value.showModal()
-      treeList.value = []
-
+      currentMoveItem.value = item.value
+      treeList.value = [
+        [
+          {
+            name: '根目录',
+            filePath: ''
+          }
+        ]
+      ]
+      selectFolderPath.value = ''
+      dialogShow()
       fetch(`/api/list`, {
         method: 'POST',
         headers: {
@@ -233,7 +245,7 @@ const menuAction = (event, item) => {
 }
 
 const dialogClick = (item, index) => {
-  console.log(item)
+  selectFolderPath.value = item.filePath
   fetch(`/api/list`, {
     method: 'POST',
     headers: {
@@ -435,26 +447,32 @@ const dialogClose = () => {
   dialog.value.close()
 }
 
+const dialogShow = () => {
+  dialog.value.showModal()
+}
+
+const dialogSubmit = () => {
+  fetch('/api/move', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      oldPath: currentMoveItem.value.filePath,
+      newPath: [selectFolderPath.value, currentMoveItem.value.name]
+    })
+  })
+    .then((res) => res.json())
+    .then((res) => {
+      if (res.isExit) {
+        alert(res.message)
+      } else {
+        dialogClose()
+        getList()
+      }
+    })
+}
+
 getList()
 </script>
-<style scoped>
-dialog {
-  min-width: 300px;
-  min-height: 200px;
-  padding: 15px;
-  border-radius: 8px;
-  border: none;
-  background-color: #fff;
-}
-dialog::backdrop {
-  background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
-}
-dialog .dialog-list {
-  width: 120px;
-}
-dialog .dialog-item {
-  padding: 4px 10px;
-  border: 1px solid var(--primary-color);
-  margin-top: -1px;
-}
-</style>
+<style scoped></style>

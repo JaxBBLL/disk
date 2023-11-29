@@ -267,6 +267,33 @@ app.post('/api/rename', async (req, res) => {
   }
 })
 
+app.post('/api/move', async (req, res) => {
+  const oldPath = req.body.oldPath
+  const newPath = req.body.newPath || []
+  const oldFolderPath = path.resolve(dest, oldPath)
+  const newFolderPath = path.resolve(dest, ...newPath)
+  if (await exists(newFolderPath)) {
+    res.send({
+      code: 200,
+      isExit: 1,
+      message: '目录存在相同文件名'
+    })
+    return
+  }
+  try {
+    await fs.promises.rename(oldFolderPath, newFolderPath)
+    res.send({
+      code: 200,
+      data: true,
+      message: '修改成功'
+    })
+  } catch {
+    res.status(500).send({
+      message: '修改失败'
+    })
+  }
+})
+
 app.post('/api/create', async (req, res) => {
   const paths = req.body.filePath || []
   const name = req.body.name
