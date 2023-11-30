@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "author": "JaxBBLL",
-  "main": "index.js",
-  "bin": "./index.js",
+  "type": "module",
+  "main": "index.cjs",
+  "bin": "./index.cjs",
   "pkg": {
     "scripts": "index.js",
     "assets": "dist/**/*",
@@ -41,7 +42,7 @@
     "nodemon": "3.0.1",
     "pkg": "5.8.1",
     "prettier": "3.0.3",
-    "vite": "4.4.11",
+    "vite": "5.0.4",
     "vue": "3.3.9"
   }
 }
