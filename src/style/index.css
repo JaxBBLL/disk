@@ -27,6 +27,8 @@ body {
 
 .app {
   position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 .header {
@@ -45,9 +47,27 @@ body {
   padding: 0 10px;
 }
 .main {
+  margin-bottom: auto;
+}
+.main-main {
+  max-width: 1000px;
+  margin: 10px auto;
+  padding: 0 10px;
+}
+.footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+  background-color: #fff;
+  padding: 5px;
+  box-shadow: -3px -1px 3px 0px rgba(200, 200, 200, 0.75);
+}
+.footer-main {
+  display: flex;
+  align-items: center;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 0 10px;
+  padding: 2px 10px;
 }
 .bread {
   display: flex;
@@ -90,6 +110,16 @@ body {
   opacity: 0.8;
 }
 
+.btn-text {
+  cursor: pointer;
+  color: var(--primary-color);
+}
+
+.btn-text.btn-danger {
+  cursor: pointer;
+  color: var(--danger-color);
+}
+
 .icon {
   margin-right: 4px;
 }
@@ -111,15 +141,16 @@ body {
 .list > div + div {
   border-top: 1px solid var(--light-color);
 }
-.list-item:hover {
-  color: var(--primary-color);
-}
+
 .file-name {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   margin-right: auto;
   font-size: 14px;
+}
+.file-name:hover {
+  color: var(--primary-color);
 }
 
 .lds-roller {
@@ -252,4 +283,16 @@ body {
   padding: 15px;
   text-align: center;
   border-top: 1px solid #d2d2d2;
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.checkbox input:checked + * {
+  color: var(--primary-color);
+}
+
+.child-checkbox {
+  padding-right: 10px;
 }

@@ -17,69 +17,91 @@
           </div>
         </header>
         <main class="main">
-          <section v-if="!isLoading">
-            <div class="list" v-if="list.length">
-              <template v-for="(item, index) in list" :key="index">
-                <ContextMenu
-                  :menu="menuItems"
-                  @action="menuAction"
-                  @before="handleBeforeShow(item)"
-                >
-                  <template v-slot="{ handle }">
-                    <div
-                      @click="item.isDirectory ? entryDirectory(item) : handleDownload(item, true)"
-                      class="list-item"
-                      :draggable="true"
-                      @dragstart="dragStart(item, $event)"
-                      @dragover="dropOver(item, $event)"
-                      @drop="drop(item, $event)"
-                      @contextmenu="handle"
-                    >
-                      <div class="file-name">
-                        <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
-                        <svg
-                          v-else
-                          class="icon"
-                          :class="item.icon"
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 512 512"
-                          fill="#fee082"
-                        >
-                          <path
-                            d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
-                          ></path>
-                        </svg>
-                        <div>{{ item.name }}</div>
-                      </div>
+          <div class="main-main">
+            <section v-if="!isLoading">
+              <div class="list" v-if="list.length">
+                <template v-for="(item, index) in list" :key="index">
+                  <ContextMenu
+                    :menu="menuItems"
+                    @action="menuAction"
+                    @before="handleBeforeShow(item)"
+                  >
+                    <template v-slot="{ handle }">
                       <div
-                        v-if="!item.isDirectory"
-                        style="margin: 0 20px; color: var(--gray-color)"
+                        class="list-item"
+                        :draggable="true"
+                        @dragstart="dragStart(item, $event)"
+                        @dragover="dropOver(item, $event)"
+                        @drop="drop(item, $event)"
+                        @contextmenu="handle"
+                        @click="handleSelectItem(item)"
                       >
-                        {{ item.size }} KB
+                        <label class="checkbox child-checkbox" @click.stop>
+                          <input type="checkbox" :value="item" v-model="selectedItems" />
+                        </label>
+                        <div
+                          class="file-name"
+                          @click.stop="
+                            item.isDirectory ? entryDirectory(item) : handleDownload(item, true)
+                          "
+                        >
+                          <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
+                          <svg
+                            v-else
+                            class="icon"
+                            :class="item.icon"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 512 512"
+                            fill="#fee082"
+                          >
+                            <path
+                              d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
+                            ></path>
+                          </svg>
+                          <div>{{ item.name }}</div>
+                        </div>
+                        <div
+                          v-if="!item.isDirectory"
+                          style="margin: 0 20px; color: var(--gray-color)"
+                        >
+                          {{ item.size }} KB
+                        </div>
+                        <div style="color: var(--gray-color)">{{ item.birthtime }}</div>
                       </div>
-                      <div style="color: var(--gray-color)">{{ item.birthtime }}</div>
-                    </div>
-                  </template>
-                </ContextMenu>
-              </template>
+                    </template>
+                  </ContextMenu>
+                </template>
+              </div>
+              <div class="list" v-else>
+                <div style="text-align: center; padding: 10px">无文件</div>
+              </div>
+            </section>
+            <div class="lds-roller" v-else>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
+              <div></div>
             </div>
-            <div class="list" v-else>
-              <div style="text-align: center; padding: 10px">无文件</div>
-            </div>
-          </section>
-          <div class="lds-roller" v-else>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
           </div>
         </main>
+        <footer class="footer">
+          <div class="footer-main">
+            <label class="checkbox">
+              <input type="checkbox" v-model="selectAll" @change="toggleAll" />
+              <span>全选</span>
+            </label>
+            <div style="margin-left: 20px" v-show="selectedItems.length">
+              <span class="btn-text btn-danger" @click="handlePatchDelete"> 删除 </span>
+              <!-- <span class="btn" @click="handleUpload"> 移动 </span> -->
+            </div>
+          </div>
+        </footer>
         <dialog class="dialog-wrap" ref="dialog" :open="isOpen">
           <section class="dialog-content">
             <div class="dialog-list" v-for="(item, index) in treeList" :key="index">
@@ -110,12 +132,15 @@ import * as FileIcons from 'file-icons-js'
 import { ref } from 'vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import { download, selectFiles, selectFolder } from '@/utils/index.js'
-import useDrop from '@/hooks/drop.js'
+import useDrop from '@/hooks/useDrop.js'
+import useSelectAll from '@/hooks/useSelectAll'
 
 const hash = decodeURIComponent(location.hash.slice(1))
 const list = ref([])
 const isLoading = ref(false)
 const paths = ref(hash.split('/'))
+
+const { selectedItems, selectAll, toggleAll } = useSelectAll(list)
 
 const isOpen = ref(false)
 const treeList = ref([])
@@ -198,7 +223,7 @@ const menuAction = (event, item) => {
     },
     3: () => {
       setTimeout(() => {
-        handleDelete(item.value.filePath)
+        handleDelete([item.value.filePath])
       }, 100)
     },
     4: () => {
@@ -341,8 +366,19 @@ const handleUpload = () => {
   })
 }
 
+const handleSelectItem = (item) => {
+  const isIn = selectedItems.value.some((s) => s.name === item.name)
+  if (isIn) {
+    selectedItems.value = selectedItems.value.filter((s) => s.name !== item.name)
+  } else {
+    selectedItems.value.push(item)
+  }
+}
+
 const getList = () => {
   isLoading.value = true
+  selectAll.value = false
+  selectedItems.value = []
   fetch(`/api/list`, {
     method: 'POST',
     headers: {
@@ -413,10 +449,18 @@ const createFolder = () => {
     })
 }
 
-const handleDelete = (filePath) => {
-  const result = confirm(`确定删除：${filePath}?`)
+const handleDelete = (filePaths) => {
+  const result = confirm(`确定删除：${[filePaths]}?`)
   if (result) {
-    fetch(`/api/delete?filePath=${filePath}`)
+    fetch(`/api/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        filePaths
+      })
+    })
       .then((res) => res.json())
       .then((res) => {
         if (res.code === 200) {
@@ -424,6 +468,11 @@ const handleDelete = (filePath) => {
         }
       })
   }
+}
+
+const handlePatchDelete = () => {
+  const filePaths = selectedItems.value.map((item) => item.filePath)
+  handleDelete(filePaths)
 }
 
 const dialogClose = () => {
