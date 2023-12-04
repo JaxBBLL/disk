@@ -10,7 +10,6 @@ const { getConfig } = require('../util.js')
 const { dest } = getConfig()
 
 function previewFile(req, res) {
-  console.log(req.params.filename)
   const filePath = req.query.filePath
   const realFilePath = path.join(dest, filePath)
 
@@ -36,7 +35,7 @@ function previewFile(req, res) {
   })
 }
 
-router.get('/file/:name', (req, res) => {
+router.get('/file/:name?', (req, res) => {
   const name = req.params.name
   if (name) {
     previewFile(req, res)

@@ -13,7 +13,8 @@
                 >{{ item || '根目录' }}</span
               >
             </div>
-            <span class="btn btn-primary" @click="handleUpload"> 上传文件 </span>
+            <input class="input" type="text" placeholder="搜索" v-model="fileName" />
+            <!-- <span class="btn btn-primary" @click="handleUpload"> 上传文件 </span> -->
           </div>
         </header>
         <main class="main">
@@ -129,14 +130,16 @@
 
 <script setup>
 import * as FileIcons from 'file-icons-js'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import ContextMenu from '@/components/ContextMenu.vue'
 import { download, selectFiles, selectFolder } from '@/utils/index.js'
 import useDrop from '@/hooks/useDrop.js'
 import useSelectAll from '@/hooks/useSelectAll'
+import { debounceRef } from './utils/debounceRef'
 
 const hash = decodeURIComponent(location.hash.slice(1))
 const list = ref([])
+const fileName = debounceRef('')
 const isLoading = ref(false)
 const paths = ref(hash.split('/'))
 
@@ -372,6 +375,8 @@ const handleSelectItem = (item) => {
   }
 }
 
+watch(fileName, () => getList())
+
 const getList = () => {
   isLoading.value = true
   selectAll.value = false
@@ -382,6 +387,7 @@ const getList = () => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
+      name: fileName.value,
       filePath: paths.value
     })
   })

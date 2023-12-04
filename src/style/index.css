@@ -25,6 +25,17 @@ body {
   font-size: 12px;
 }
 
+.input {
+  padding: 5px;
+  border: 1px solid #ddd;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.input:focus {
+  border: 1px solid var(--primary-color);
+}
+
 .app {
   position: relative;
   display: flex;

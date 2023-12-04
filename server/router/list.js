@@ -11,6 +11,7 @@ const { getConfig, formatDate } = require('../util.js')
 const { dest, hasDel } = getConfig()
 
 router.post('/', async (req, res) => {
+  const name = (req.body.name || '').trim().toLocaleLowerCase()
   const paths = req.body.filePath || []
   const isDirectory = req.body.isDirectory || false
   try {
@@ -37,7 +38,12 @@ router.post('/', async (req, res) => {
         hasDel
       })
     }
-    const data = isDirectory ? ret.filter((i) => i.isDirectory) : ret
+    let data = isDirectory ? ret.filter((i) => i.isDirectory) : ret
+    if (name) {
+      data = data.filter((i) => {
+        return i.name.toLocaleLowerCase().indexOf(name) > -1
+      })
+    }
     return res.send({ code: 200, data })
   } catch (err) {
     console.error(err)
