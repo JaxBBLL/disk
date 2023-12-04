@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "author": "JaxBBLL",
-  "type": "module",
-  "main": "./server/index.cjs",
-  "bin": "./server/index.cjs",
+  "main": "./server/index.js",
+  "bin": "./server/index.js",
   "pkg": {
     "scripts": "./server/index.js",
     "assets": [
@@ -24,7 +23,7 @@
     "build:client": "vite build",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
-    "dev:server": "nodemon ./server/index.cjs",
+    "dev:server": "nodemon ./server/index.js",
     "build": "npm run build:client && pkg ."
   },
   "dependencies": {
@@ -45,7 +44,7 @@
     "nodemon": "3.0.1",
     "pkg": "5.8.1",
     "prettier": "3.0.3",
-    "vite": "5.0.4",
+    "vite": "4.5.0",
     "vue": "3.3.9"
   }
 }
