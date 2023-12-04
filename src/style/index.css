@@ -115,6 +115,10 @@ body {
   color: var(--primary-color);
 }
 
+.btn-text + .btn-text {
+  margin-left: 10px;
+}
+
 .btn-text.btn-danger {
   cursor: pointer;
   color: var(--danger-color);

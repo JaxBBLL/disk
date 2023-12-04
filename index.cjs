@@ -255,11 +255,12 @@ app.post('/api/delete', async (req, res) => {
 })
 
 app.post('/api/rename', async (req, res) => {
-  const basePath = req.body.basePath || []
-  const oldPath = req.body.oldPath
-  const newPath = req.body.newPath
-  const oldFolderPath = path.resolve(dest, ...basePath, oldPath)
-  const newFolderPath = path.resolve(dest, ...basePath, newPath)
+  const filePath = req.body.filePath || ''
+  const oldName = path.basename(filePath)
+  const newName = req.body.newName || ''
+  const newPath = filePath.split(oldName)[0] + newName
+  const oldFolderPath = path.resolve(dest, filePath)
+  const newFolderPath = path.resolve(dest, newPath)
   if (await exists(newFolderPath)) {
     res.send({
       code: 200,
@@ -283,28 +284,56 @@ app.post('/api/rename', async (req, res) => {
 })
 
 app.post('/api/move', async (req, res) => {
-  const oldPath = req.body.oldPath
-  const newPath = req.body.newPath || []
-  const oldFolderPath = path.resolve(dest, oldPath)
-  const newFolderPath = path.resolve(dest, ...newPath)
-  if (await exists(newFolderPath)) {
-    res.send({
-      code: 200,
-      isExit: 1,
-      message: '目录存在相同文件名'
+  const filePaths = req.body.filePaths || []
+  const newFolder = req.body.newFolder || ''
+  const responses = []
+
+  if (!filePaths.length) {
+    res.status(500).send({
+      code: 500,
+      message: '请选择文件'
     })
     return
   }
+
   try {
-    await fs.promises.rename(oldFolderPath, newFolderPath)
+    for (const oldPath of filePaths) {
+      const oldFolderPath = path.resolve(dest, oldPath)
+      const fileName = path.basename(oldFolderPath)
+      const newFolderPath = path.resolve(dest, newFolder, fileName)
+
+      if (await exists(newFolderPath)) {
+        responses.push({
+          code: 200,
+          isExit: 1,
+          message: '目录存在相同文件名'
+        })
+        continue
+      }
+
+      try {
+        await fs.promises.rename(oldFolderPath, newFolderPath)
+        responses.push({
+          code: 200,
+          data: true,
+          message: '修改成功'
+        })
+      } catch (error) {
+        responses.push({
+          code: 500,
+          message: `修改失败: ${error.message}`
+        })
+      }
+    }
+
+    // 发送整体的响应
     res.send({
       code: 200,
-      data: true,
-      message: '修改成功'
+      data: responses
     })
-  } catch {
+  } catch (error) {
     res.status(500).send({
-      message: '修改失败'
+      message: `出现错误: ${error.message}`
     })
   }
 })

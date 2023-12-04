@@ -98,7 +98,7 @@
             </label>
             <div style="margin-left: 20px" v-show="selectedItems.length">
               <span class="btn-text btn-danger" @click="handlePatchDelete"> 删除 </span>
-              <!-- <span class="btn" @click="handleUpload"> 移动 </span> -->
+              <span class="btn-text" @click="dialogShow()"> 移动 </span>
             </div>
           </div>
         </footer>
@@ -146,29 +146,35 @@ const isOpen = ref(false)
 const treeList = ref([])
 const dialog = ref(null)
 const selectFolderPath = ref('')
-const currentMoveItem = ref(null)
+const currentMoveItem = ref([])
 
 const { dragStart, drop, dropOver } = useDrop((origin, target) => {
   if (!target.isDirectory) {
     return
   }
-  fetch('/api/rename', {
+  const filePaths = [origin.filePath]
+  console.log(origin, target)
+  fetch('/api/move', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      basePath: paths.value,
-      oldPath: origin.name,
-      newPath: target.name + '/' + origin.name
+      filePaths,
+      newFolder: target.filePath
     })
   })
     .then((res) => res.json())
     .then((res) => {
-      if (res.isExit) {
-        alert(res.message)
-      } else {
+      if (res.code == 200) {
+        const isExit = res.data.some((i) => i.isExit)
+        if (isExit) {
+          alert('目录存在相同文件名')
+        }
+        dialogClose()
         getList()
+      } else {
+        alert(res.message)
       }
     })
 })
@@ -238,15 +244,7 @@ const menuAction = (event, item) => {
       }, 100)
     },
     7: () => {
-      currentMoveItem.value = item.value
-      const rootItem = {
-        name: '根目录',
-        filePath: ''
-      }
-      treeList.value = [[rootItem]]
-      selectFolderPath.value = ''
-      dialogShow()
-      dialogClick(rootItem, 0)
+      dialogShow(item.value)
     }
   }
   map[item.action]()
@@ -307,9 +305,8 @@ const handleRename = (item) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      basePath: paths.value,
-      oldPath: item.name,
-      newPath: text + ext
+      filePath: item.filePath,
+      newName: text + ext
     })
   })
     .then((res) => res.json())
@@ -479,28 +476,46 @@ const dialogClose = () => {
   dialog.value.close()
 }
 
-const dialogShow = () => {
+const dialogShow = (item) => {
+  if (item) {
+    currentMoveItem.value = [item]
+  } else {
+    currentMoveItem.value = [...selectedItems.value]
+  }
   dialog.value.showModal()
+  const rootItem = {
+    name: '根目录',
+    filePath: ''
+  }
+  treeList.value = [[rootItem]]
+  selectFolderPath.value = ''
+  dialogClick(rootItem, 0)
 }
 
 const dialogSubmit = () => {
+  const filePaths = currentMoveItem.value.map((item) => item.filePath)
+
   fetch('/api/move', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      oldPath: currentMoveItem.value.filePath,
-      newPath: [selectFolderPath.value, currentMoveItem.value.name]
+      filePaths,
+      newFolder: selectFolderPath.value
     })
   })
     .then((res) => res.json())
     .then((res) => {
-      if (res.isExit) {
-        alert(res.message)
-      } else {
+      if (res.code == 200) {
+        const isExit = res.data.some((i) => i.isExit)
+        if (isExit) {
+          alert('目录存在相同文件名')
+        }
         dialogClose()
         getList()
+      } else {
+        alert(res.message)
       }
     })
 }
