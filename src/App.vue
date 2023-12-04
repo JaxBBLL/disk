@@ -414,9 +414,11 @@ const gotoFolder = (index, isLast) => {
 
 const handleDownload = (item, isPreviewFist = false) => {
   if (isPreviewFist) {
-    window.open(`/api/preview/${item.name}?filePath=${item.filePath}`)
+    window.open(`/api/download/file/${item.name}?filePath=${item.filePath}`)
   } else {
-    download(`/api/${item.isDirectory ? 'downloadFolder' : 'download'}?filePath=${item.filePath}`)
+    download(
+      `/api/${item.isDirectory ? 'download/folder' : 'download/file'}?filePath=${item.filePath}`
+    )
   }
 }
 
