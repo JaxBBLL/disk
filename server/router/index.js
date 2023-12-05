@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 const downloadRoutes = require('./download')
 const uploadRoutes = require('./upload')
 const listRoutes = require('./list')

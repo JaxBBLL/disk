@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -100,7 +99,12 @@ function formatDate(date, fmt = 'YYYY-MM-DD HH:mm:ss') {
   return fmt
 }
 
+let appConfig = null
+
 function getConfig() {
+  if (appConfig) {
+    return appConfig
+  }
   const defaultConfig = {
     dest: './',
     hasDel: true,
@@ -127,11 +131,13 @@ function getConfig() {
     console.log('已存在配置文件config.json')
   }
 
-  return {
+  appConfig = {
     dest,
     hasDel,
     port
   }
+
+  return appConfig
 }
 
 module.exports = {

@@ -69,7 +69,7 @@
                         >
                           {{ item.size }} KB
                         </div>
-                        <div style="color: var(--gray-color)">{{ item.birthtime }}</div>
+                        <div style="color: var(--gray-color)">{{ item.updatetime }}</div>
                       </div>
                     </template>
                   </ContextMenu>
@@ -98,8 +98,10 @@
               <span>全选</span>
             </label>
             <div style="margin-left: 20px" v-show="selectedItems.length">
-              <span class="btn-text btn-danger" @click="handlePatchDelete"> 删除 </span>
               <span class="btn-text" @click="dialogShow()"> 移动 </span>
+              <span v-if="hasDel" class="btn-text btn-danger" @click="handlePatchDelete">
+                删除
+              </span>
             </div>
           </div>
         </footer>
@@ -137,6 +139,7 @@ import useDrop from '@/hooks/useDrop.js'
 import useSelectAll from '@/hooks/useSelectAll'
 import { debounceRef } from './utils/debounceRef'
 
+const hasDel = ref(false)
 const hash = decodeURIComponent(location.hash.slice(1))
 const list = ref([])
 const fileName = debounceRef('')
@@ -398,6 +401,7 @@ const getList = () => {
           item.icon = FileIcons.getClassWithColor(item.name)
           return item
         })
+        hasDel.value = res.hasDel
       }
     })
     .finally(() => {

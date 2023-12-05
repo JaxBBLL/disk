@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 const express = require('express')
 const path = require('path')
 const util = require('util')
@@ -44,7 +43,7 @@ router.post('/', async (req, res) => {
         return i.name.toLocaleLowerCase().indexOf(name) > -1
       })
     }
-    return res.send({ code: 200, data })
+    return res.send({ code: 200, data, hasDel })
   } catch (err) {
     console.error(err)
     return res.status(500).send({ message: '读取目录失败' })
