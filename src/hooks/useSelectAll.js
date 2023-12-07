@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 export default function (list) {
   const selectedItems = ref([])
   const selectAll = ref(false)
+  const indeterminate = ref(false)
 
   const toggleAll = () => {
     if (selectAll.value) {
@@ -16,6 +17,7 @@ export default function (list) {
     selectedItems,
     (newValue) => {
       selectAll.value = newValue.length && newValue.length === list.value.length
+      indeterminate.value = newValue.length > 0 && newValue.length !== list.value.length
     },
     {
       deep: true
@@ -25,6 +27,7 @@ export default function (list) {
   return {
     selectedItems,
     selectAll,
-    toggleAll
+    toggleAll,
+    indeterminate
   }
 }

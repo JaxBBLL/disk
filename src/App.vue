@@ -94,7 +94,12 @@
         <footer class="footer">
           <div class="footer-main">
             <label class="checkbox">
-              <input type="checkbox" v-model="selectAll" @change="toggleAll" />
+              <input
+                type="checkbox"
+                v-model="selectAll"
+                @change="toggleAll"
+                :indeterminate="indeterminate"
+              />
               <span>全选</span>
             </label>
             <div style="margin-left: 40px" v-show="selectedItems.length">
@@ -147,7 +152,7 @@ const fileName = debounceRef('')
 const isLoading = ref(false)
 const paths = ref(hash.split('/'))
 
-const { selectedItems, selectAll, toggleAll } = useSelectAll(list)
+const { selectedItems, selectAll, toggleAll, indeterminate } = useSelectAll(list)
 
 const isOpen = ref(false)
 const treeList = ref([])
