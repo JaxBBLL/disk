@@ -1,5 +1,5 @@
 {
-  "dest": "D:/html/release",
+  "dest": "E:/release",
   "hasDel": true,
-  "port": 8888
+  "port": 8887
 }

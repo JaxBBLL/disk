@@ -97,7 +97,8 @@
               <input type="checkbox" v-model="selectAll" @change="toggleAll" />
               <span>全选</span>
             </label>
-            <div style="margin-left: 20px" v-show="selectedItems.length">
+            <div style="margin-left: 40px" v-show="selectedItems.length">
+              <span class="btn-text" @click="downloadZip"> 下载 </span>
               <span class="btn-text" @click="dialogShow()"> 移动 </span>
               <span v-if="hasDel" class="btn-text btn-danger" @click="handlePatchDelete">
                 删除
@@ -530,6 +531,32 @@ const dialogSubmit = () => {
         alert(res.message)
       }
     })
+}
+
+const downloadZip = () => {
+  const filePaths = selectedItems.value.map((item) => item.filePath)
+  console.log(typeof filePaths)
+  download(`/api/download/zip?filePaths=${JSON.stringify(filePaths)}`)
+
+  // fetch('/api/move', {
+  //   body: JSON.stringify({
+  //     filePaths,
+  //     newFolder: selectFolderPath.value
+  //   })
+  // })
+  //   .then((res) => res.json())
+  //   .then((res) => {
+  //     if (res.code == 200) {
+  //       const isExit = res.data.some((i) => i.isExit)
+  //       if (isExit) {
+  //         alert('目录存在相同文件名')
+  //       }
+  //       dialogClose()
+  //       getList()
+  //     } else {
+  //       alert(res.message)
+  //     }
+  //   })
 }
 
 getList()
