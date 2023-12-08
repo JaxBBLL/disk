@@ -3,7 +3,8 @@
   --light-color: #ddecfd;
   --danger-color: #f66;
   --gray-color: #666;
-  --border-color: #f5f5f5;
+  // --border-color: #f5f5f5;
+  --border-color: #ddd;
 }
 html {
   height: 100%;
@@ -23,6 +24,7 @@ html {
 body {
   margin: 0;
   font-size: 12px;
+  background-color: #f8f8f8;
 }
 
 .input {
@@ -62,8 +64,9 @@ body {
 }
 .main-main {
   max-width: 1000px;
-  margin: 10px auto;
-  padding: 0 10px;
+  margin: 10px auto 0;
+  padding: 10px;
+  background-color: #fff;
 }
 .footer {
   position: sticky;
@@ -140,7 +143,6 @@ body {
 }
 
 .list {
-  margin-top: 10px;
   border: 1px solid var(--light-color);
 }
 .list-item {
@@ -304,6 +306,39 @@ body {
   align-items: center;
   cursor: pointer;
 }
+.checkbox input {
+  cursor: pointer;
+  appearance: none;
+  width: 1em;
+  height: 1em;
+  border: 1px solid var(--border-color);
+  border-radius: 0.1em;
+}
+.checkbox input:checked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  &::after {
+    content: '\2713';
+    font-size: 0.8em;
+    color: white;
+  }
+}
+.checkbox input:indeterminate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  &::after {
+    content: '\2212';
+    font-size: 0.8em;
+    color: white;
+  }
+}
+
 .checkbox input:checked + * {
   color: var(--primary-color);
 }
