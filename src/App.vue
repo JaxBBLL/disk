@@ -430,11 +430,9 @@ const gotoFolder = (index, isLast) => {
 
 const handleDownload = (item, isPreviewFist = false) => {
   if (isPreviewFist) {
-    window.open(`/api/download/file/${item.name}?filePath=${item.filePath}`)
+    window.open(`/api/download/preview/${item.name}?filePath=${item.filePath}`)
   } else {
-    download(
-      `/api/${item.isDirectory ? 'download/folder' : 'download/file'}?filePath=${item.filePath}`
-    )
+    download(`/api/download?filePaths=${JSON.stringify([item.filePath])}`)
   }
 }
 
@@ -540,28 +538,7 @@ const dialogSubmit = () => {
 
 const downloadZip = () => {
   const filePaths = selectedItems.value.map((item) => item.filePath)
-  console.log(typeof filePaths)
-  download(`/api/download/zip?filePaths=${JSON.stringify(filePaths)}`)
-
-  // fetch('/api/move', {
-  //   body: JSON.stringify({
-  //     filePaths,
-  //     newFolder: selectFolderPath.value
-  //   })
-  // })
-  //   .then((res) => res.json())
-  //   .then((res) => {
-  //     if (res.code == 200) {
-  //       const isExit = res.data.some((i) => i.isExit)
-  //       if (isExit) {
-  //         alert('目录存在相同文件名')
-  //       }
-  //       dialogClose()
-  //       getList()
-  //     } else {
-  //       alert(res.message)
-  //     }
-  //   })
+  download(`/api/download?filePaths=${JSON.stringify(filePaths)}`)
 }
 
 getList()

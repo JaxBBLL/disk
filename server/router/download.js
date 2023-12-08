@@ -8,6 +8,19 @@ const router = express.Router()
 const { getConfig } = require('../util.js')
 const { dest } = getConfig()
 
+router.get('/', (req, res) => {
+  const filePaths = JSON.parse(req.query.filePaths || '[]')
+  const folderPaths = filePaths.map((filePath) => path.join(dest, filePath))
+
+  const filesToCompress = folderPaths
+  compressAndDownload(filesToCompress, res)
+})
+
+router.get('/preview/:name?', (req, res) => {
+  const name = req.params.name
+  previewFile(req, res)
+})
+
 function previewFile(req, res) {
   const filePath = req.query.filePath
   const realFilePath = path.join(dest, filePath)
@@ -34,37 +47,38 @@ function previewFile(req, res) {
   })
 }
 
-router.get('/file/:name?', (req, res) => {
-  const name = req.params.name
-  if (name) {
-    previewFile(req, res)
-    return
+function setUniqueFileName(baseName) {
+  let fileName = baseName
+  while (fs.existsSync(fileName)) {
+    const random = Math.random().toString(16).replace('0.', '')
+    fileName = `${baseName}_${random}.zip`
   }
-  const filePath = req.query.filePath
-  const fileName = path.basename(filePath)
-  const realFilePath = path.join(dest, filePath)
+  return fileName
+}
 
-  // 设置响应头，指定文件类型和名称
+function downloadFile(filePath, res) {
+  const fileName = path.basename(filePath)
+
   res.setHeader('Content-Type', 'application/octet-stream')
   res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(fileName)}`)
 
-  // 将文件流式传输到响应中
-  const stream = fs.createReadStream(realFilePath)
+  const stream = fs.createReadStream(filePath)
   stream.pipe(res)
-})
+}
 
-// Function to compress files/folders into a zip archive and initiate download
 function compressAndDownload(files, res) {
   let zipFileName
-  if (files && files.length === 1) {
-    zipFileName = files[0] + '.zip'
-    while (fs.existsSync(zipFileName)) {
-      // 确保文件名唯一，不覆盖现有文件
-      const random = Math.random().toString(16).replace('0.', '')
-      zipFileName = `${files[0]}_${random}.zip`
+
+  if (files.length === 1) {
+    const file = files[0]
+    const stat = fs.statSync(file)
+    if (stat.isFile()) {
+      downloadFile(file, res)
+      return
     }
+    zipFileName = setUniqueFileName(file + '.zip')
   } else {
-    zipFileName = Date.now() + '.zip'
+    zipFileName = setUniqueFileName(Date.now() + '.zip')
   }
 
   const output = fs.createWriteStream(zipFileName)
@@ -77,7 +91,7 @@ function compressAndDownload(files, res) {
         console.error('下载错误:', err)
       } else {
         console.log('下载成功')
-        fs.unlinkSync(zipFileName) // Delete the zip file after download
+        fs.unlinkSync(zipFileName) // 在下载完成后删除压缩文件
       }
     })
   })
@@ -100,23 +114,5 @@ function compressAndDownload(files, res) {
 
   archive.finalize()
 }
-
-// Route for compressing a single folder
-router.get('/folder', (req, res) => {
-  const filePath = req.query.filePath
-  const folderPath = path.join(dest, filePath)
-
-  const filesToCompress = [folderPath]
-  compressAndDownload(filesToCompress, res)
-})
-
-// Route for compressing multiple files/folders
-router.get('/zip', (req, res) => {
-  const filePaths = JSON.parse(req.query.filePaths || '[]')
-  const folderPaths = filePaths.map((filePath) => path.join(dest, filePath))
-
-  const filesToCompress = folderPaths
-  compressAndDownload(filesToCompress, res)
-})
 
 module.exports = router
