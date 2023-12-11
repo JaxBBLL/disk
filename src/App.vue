@@ -18,9 +18,36 @@
           </div>
         </header>
         <main class="main">
-          <div class="main-main">
-            <section v-if="!isLoading">
-              <div class="list" v-if="list.length">
+          <div class="main-main" v-if="!isLoading">
+            <table class="table" v-if="list.length">
+              <thead>
+                <tr>
+                  <th width="50">
+                    <label class="checkbox">
+                      <input
+                        type="checkbox"
+                        v-model="selectAll"
+                        @change="toggleAll"
+                        :indeterminate="indeterminate"
+                      />
+                      <!-- <span>全选</span> -->
+                    </label>
+                  </th>
+                  <th>
+                    <div class="flex" v-if="selectedItems.length">
+                      <span class="btn-text" @click="downloadZip"> 下载 </span>
+                      <span class="btn-text" @click="dialogShow()"> 移动 </span>
+                      <span v-if="hasDel" class="btn-text btn-danger" @click="handlePatchDelete">
+                        删除
+                      </span>
+                    </div>
+                    <div v-else>名称</div>
+                  </th>
+                  <th width="140">大小</th>
+                  <th width="110">修改时间</th>
+                </tr>
+              </thead>
+              <tbody>
                 <template v-for="(item, index) in list" :key="index">
                   <ContextMenu
                     :menu="menuItems"
@@ -28,8 +55,7 @@
                     @before="handleBeforeShow(item)"
                   >
                     <template v-slot="{ handle }">
-                      <div
-                        class="list-item"
+                      <tr
                         :draggable="true"
                         @dragstart="dragStart(item, $event)"
                         @dragover="dropOver(item, $event)"
@@ -37,80 +63,59 @@
                         @contextmenu="handle"
                         @click="handleSelectItem(item)"
                       >
-                        <label class="checkbox child-checkbox" @click.stop>
-                          <input type="checkbox" :value="item" v-model="selectedItems" />
-                        </label>
-                        <div
-                          class="file-name"
-                          @click.stop="
-                            item.isDirectory ? entryDirectory(item) : handleDownload(item, true)
-                          "
-                        >
-                          <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
-                          <svg
-                            v-else
-                            class="icon"
-                            :class="item.icon"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 512 512"
-                            fill="#fee082"
+                        <td>
+                          <label class="checkbox child-checkbox" @click.stop>
+                            <input type="checkbox" :value="item" v-model="selectedItems" />
+                          </label>
+                        </td>
+                        <td>
+                          <div
+                            class="file-name"
+                            @click.stop="
+                              item.isDirectory ? entryDirectory(item) : handleDownload(item, true)
+                            "
                           >
-                            <path
-                              d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
-                            ></path>
-                          </svg>
-                          <div>{{ item.name }}</div>
-                        </div>
-                        <div
-                          v-if="!item.isDirectory"
-                          style="margin: 0 20px; color: var(--gray-color)"
-                        >
-                          {{ item.size }} KB
-                        </div>
-                        <div style="color: var(--gray-color)">{{ item.updatetime }}</div>
-                      </div>
+                            <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
+                            <svg
+                              v-else
+                              class="icon"
+                              :class="item.icon"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="14"
+                              height="14"
+                              viewBox="0 0 512 512"
+                              fill="#fee082"
+                            >
+                              <path
+                                d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
+                              ></path>
+                            </svg>
+                            <div>{{ item.name }}</div>
+                          </div>
+                        </td>
+                        <td>
+                          <div v-if="!item.isDirectory">{{ item.size }} KB</div>
+                        </td>
+                        <td>{{ item.updatetime }}</td>
+                      </tr>
                     </template>
                   </ContextMenu>
                 </template>
-              </div>
-              <div class="list" v-else>
-                <div style="text-align: center; padding: 10px">无文件</div>
-              </div>
-            </section>
-            <div class="lds-roller" v-else>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div></div>
-              <div></div>
-            </div>
+              </tbody>
+            </table>
+            <div v-else class="no-table">无文件</div>
+          </div>
+          <div class="lds-roller" v-else>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
           </div>
         </main>
-        <footer class="footer">
-          <div class="footer-main">
-            <label class="checkbox">
-              <input
-                type="checkbox"
-                v-model="selectAll"
-                @change="toggleAll"
-                :indeterminate="indeterminate"
-              />
-              <span>全选</span>
-            </label>
-            <div style="margin-left: 40px" v-show="selectedItems.length">
-              <span class="btn-text" @click="downloadZip"> 下载 </span>
-              <span class="btn-text" @click="dialogShow()"> 移动 </span>
-              <span v-if="hasDel" class="btn-text btn-danger" @click="handlePatchDelete">
-                删除
-              </span>
-            </div>
-          </div>
-        </footer>
         <dialog class="dialog-wrap" ref="dialog" :open="isOpen">
           <section class="dialog-content">
             <div class="dialog-list" v-for="(item, index) in treeList" :key="index">
