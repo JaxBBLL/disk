@@ -22,7 +22,7 @@
             <table class="table" v-if="list.length">
               <thead>
                 <tr>
-                  <th width="50">
+                  <th width="30">
                     <label class="checkbox">
                       <input
                         type="checkbox"
@@ -483,6 +483,8 @@ const handleDelete = (filePaths) => {
       .then((res) => {
         if (res.code === 200) {
           getList()
+        } else {
+          alert(res.message)
         }
       })
   }

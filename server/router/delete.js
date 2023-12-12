@@ -3,9 +3,16 @@ const path = require('path')
 const router = express.Router()
 
 const { getConfig, deleteFileOrFolder } = require('../util.js')
-const { dest } = getConfig()
+const { dest, hasDel } = getConfig()
 
 router.post('/', async (req, res) => {
+  if (!hasDel) {
+    res.status(500).send({
+      code: 500,
+      message: '没有删除权限'
+    })
+    return
+  }
   const filePaths = req.body.filePaths || []
   const failedDeletions = []
 
