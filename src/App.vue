@@ -116,26 +116,47 @@
             <div></div>
           </div>
         </main>
-        <dialog class="dialog-wrap" ref="dialog" :open="isOpen">
-          <section class="dialog-content">
-            <div class="dialog-list" v-for="(item, index) in treeList" :key="index">
-              <div
-                class="dialog-item"
-                :class="selectFolderPath == cur.filePath ? 'active' : ''"
-                v-for="cur in item"
-                :key="cur"
-                @click="dialogClick(cur, index)"
-                :title="cur.name"
-              >
-                {{ cur.name }}
+        <Teleport to="body">
+          <Transition name="modal">
+            <div v-if="isOpen" class="modal-mask">
+              <div class="modal-wrap">
+                <header class="modal-header">选择文件夹</header>
+                <section class="modal-content">
+                  <div class="modal-list" v-for="(item, index) in treeList" :key="index">
+                    <div
+                      class="modal-item"
+                      :class="selectFolderPath == cur.filePath ? 'active' : ''"
+                      v-for="cur in item"
+                      :key="cur"
+                      @click="dialogClick(cur, index)"
+                      :title="cur.name"
+                    >
+                      <svg
+                        class="icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 512 512"
+                        fill="#fee082"
+                      >
+                        <path
+                          d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
+                        ></path>
+                      </svg>
+                      <div class="name">
+                        {{ cur.name }}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <footer class="modal-footer">
+                  <span @click="dialogClose" class="btn" type="button">关闭</span>
+                  <span @click="dialogSubmit" class="btn btn-primary" type="button">确定</span>
+                </footer>
               </div>
             </div>
-          </section>
-          <footer class="dialog-footer">
-            <span @click="dialogClose" class="btn" type="button">关闭</span>
-            <span @click="dialogSubmit" class="btn btn-primary" type="button">确定</span>
-          </footer>
-        </dialog>
+          </Transition>
+        </Teleport>
       </div>
     </template>
   </ContextMenu>
@@ -161,7 +182,6 @@ const { selectedItems, selectAll, toggleAll, indeterminate } = useSelectAll(list
 
 const isOpen = ref(false)
 const treeList = ref([])
-const dialog = ref(null)
 const selectFolderPath = ref('')
 const currentMoveItem = ref([])
 
@@ -496,7 +516,7 @@ const handlePatchDelete = () => {
 }
 
 const dialogClose = () => {
-  dialog.value.close()
+  isOpen.value = false
 }
 
 const dialogShow = (item) => {
@@ -505,7 +525,7 @@ const dialogShow = (item) => {
   } else {
     currentMoveItem.value = [...selectedItems.value]
   }
-  dialog.value.showModal()
+  isOpen.value = true
   const rootItem = {
     name: '根目录',
     filePath: ''
@@ -550,4 +570,4 @@ const downloadZip = () => {
 
 getList()
 </script>
-<style scoped></style>
+<style scoped lang="less"></style>
