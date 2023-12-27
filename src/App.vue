@@ -44,7 +44,7 @@
                     <div v-else>名称</div>
                   </th>
                   <th width="140">大小</th>
-                  <th width="110">修改时间</th>
+                  <th width="120">修改时间</th>
                 </tr>
               </thead>
               <tbody>
