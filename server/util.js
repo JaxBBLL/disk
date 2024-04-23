@@ -106,7 +106,7 @@ function getConfig() {
     return appConfig
   }
   const defaultConfig = {
-    dest: './',
+    dest: './disk',
     hasDel: true,
     port: 3000
   }

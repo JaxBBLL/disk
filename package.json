@@ -19,12 +19,13 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "start": "concurrently \"npm run dev:server\" \"vite\"",
+    "dev": "concurrently \"npm run dev:server\" \"vite\"",
     "build:client": "vite build",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
     "dev:server": "nodemon ./server/index.js",
-    "build": "npm run build:client && pkg ."
+    "build": "npm run build:client && pkg .",
+    "start": "node ./server/index.js"
   },
   "dependencies": {
     "archiver": "6.0.1",

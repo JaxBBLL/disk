@@ -1,5 +1,5 @@
 {
-  "dest": "e:/release",
+  "dest": "/",
   "hasDel": true,
   "port": 8887
 }

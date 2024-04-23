@@ -1,0 +1,12 @@
+node_modules
+build
+src
+public
+
+.eslintrc.js
+.git
+.gitignore
+.prettierrc.json
+config.json
+index.html
+vite.config.js
