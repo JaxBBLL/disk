@@ -14,7 +14,7 @@
               >
             </div>
             <input class="input" type="text" placeholder="搜索" v-model="fileName" />
-            <!-- <span class="btn btn-primary" @click="handleUpload"> 上传文件 </span> -->
+            <span class="btn btn-primary" @click="handleUpload"> 上传文件 </span>
           </div>
         </header>
         <main class="main">
