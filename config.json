@@ -1,5 +1,5 @@
 {
-  "dest": "/",
+  "dest": "./disk",
   "hasDel": true,
-  "port": 8887
+  "port": 9527
 }
