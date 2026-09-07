@@ -99,5 +99,5 @@ export interface UploadResult {
   data: string[]
 }
 
-/** 主题取值，与 localStorage 中持久化的值一致 */
-export type Theme = 'light' | 'dark'
+/** 主题取值，与 localStorage 中持久化的值一致；'system' 表示跟随系统 */
+export type Theme = 'light' | 'dark' | 'system'

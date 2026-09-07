@@ -650,12 +650,14 @@ body {
   }
 }
 
-/* 上传下拉菜单 */
-.upload-dropdown {
+/* 下拉菜单（上传 / 主题） */
+.upload-dropdown,
+.theme-dropdown {
   position: relative;
 }
 
-.upload-menu {
+.upload-menu,
+.theme-menu {
   position: absolute;
   top: 100%;
   right: 0;
@@ -667,7 +669,11 @@ body {
   z-index: 200;
 }
 
-.upload-menu .menu-item {
+.upload-menu .menu-item,
+.theme-menu .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 14px;
   cursor: pointer;
   font-size: 13px;
@@ -675,9 +681,18 @@ body {
   color: var(--text-color);
 }
 
-.upload-menu .menu-item:hover {
+.upload-menu .menu-item:hover,
+.theme-menu .menu-item:hover {
   background-color: var(--light-color);
   color: var(--primary-color);
+}
+
+.theme-menu .menu-item.active {
+  color: var(--primary-color);
+}
+
+.theme-menu .menu-item .check {
+  margin-left: auto;
 }
 
 .caret {
