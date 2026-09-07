@@ -65,19 +65,27 @@
                   class="file-name"
                   @click.stop="item.isDirectory ? emit('open', item) : emit('preview', item)"
                 >
-                  <span v-if="!item.isDirectory" class="icon" :class="item.icon"></span>
+                  <img
+                    v-if="item.icon"
+                    class="icon"
+                    :src="item.icon"
+                    alt=""
+                    width="14"
+                    height="14"
+                  />
                   <svg
                     v-else
                     class="icon"
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
                     height="14"
-                    viewBox="0 0 512 512"
-                    fill="#fee082"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
                   >
-                    <path
-                      d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
-                    ></path>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
                   </svg>
                   <div class="file-name-text" :title="item.name">{{ item.name }}</div>
                 </div>

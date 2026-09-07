@@ -14,18 +14,7 @@
                 :title="cur.name"
                 @click="selectFolder(cur, index)"
               >
-                <svg
-                  class="icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 512 512"
-                  fill="#fee082"
-                >
-                  <path
-                    d="M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z"
-                  ></path>
-                </svg>
+                <img class="icon" :src="folderIcon(cur.name)" alt="" width="14" height="14" />
                 <div class="name">{{ cur.name }}</div>
               </div>
             </div>
@@ -44,6 +33,7 @@
 import type { FileItem, ListBody, ListResult } from '#shared/types'
 // 显式导入：Nuxt 内置也有一个 reportError 组合式函数，避免自动导入解析到它
 import { reportError } from '~/utils/error'
+import { folderIcon } from '~/utils/fileIcon'
 
 const props = withDefaults(defineProps<{ modelValue?: boolean }>(), {
   modelValue: false

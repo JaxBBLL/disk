@@ -33,7 +33,7 @@ export default defineNuxtConfig({
     appManifest: false
   },
 
-  css: ['file-icons-js/css/style.css', '@/assets/css/index.less'],
+  css: ['@/assets/css/index.less'],
 
   app: {
     head: {

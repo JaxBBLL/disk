@@ -18,7 +18,7 @@ export interface FileItem {
   /** 时间戳（ms），供前端展示相对时间 */
   mtime: number
   hasDel: boolean
-  /** 前端 decorate 时附加：文件图标 class */
+  /** 前端 decorate 时附加：文件/文件夹图标（base64 SVG data URI） */
   icon?: string
   /** 前端 decorate 时附加：相对时间文案 */
   relativeTime?: string

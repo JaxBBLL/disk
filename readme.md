@@ -145,7 +145,9 @@ scripts/smoke.mjs       接口冒烟测试
   Nuxt 4 的 `shared/` 目录对 app 与 server 双向可见
 - 组件统一 `<script setup lang="ts">`，props / emits / model 均使用泛型声明
 - `start.mjs` 与 `scripts/*.mjs` 是纯 Node 脚本，保持 `.mjs`（无需引入 tsx 即可直接 `node` 运行）
-- `file-icons-js` 无类型、`archiver` v8 的 `ZipArchive` 具名导出缺类型，均在 `shared/types/*.d.ts` 中做最小声明
+- `archiver` v8 的 `ZipArchive` 具名导出缺类型，在 `shared/types/archiver.d.ts` 中做最小声明
+- 文件图标使用 `@baybreezy/file-extension-icon`（自带类型、零依赖），返回 base64 SVG data URI，
+  在 `app/utils/fileIcon.ts` 收口，无需引入图标字体样式
 
 ## 安全与健壮性
 
@@ -163,7 +165,7 @@ scripts/smoke.mjs       接口冒烟测试
 ## 已知取舍
 
 - `ssr: false`（SPA）。这是局域网文件管理器，首屏依赖浏览器 API，关闭 SSR 更简单；
-  如需 SSR，把 `nuxt.config.ts` 的 `ssr` 改回 `true` 并对 `file-icons-js` 相关代码加 `<ClientOnly>`。
+  如需 SSR，把 `nuxt.config.ts` 的 `ssr` 改回 `true`（图标库不依赖 DOM，无需 `<ClientOnly>`）。
 - 未做 Docker / 单文件打包，如需可另行添加。
 
 ## 冒烟测试

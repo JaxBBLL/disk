@@ -1,7 +1,7 @@
-import * as FileIcons from 'file-icons-js'
 import type { FileItem, ListBody, ListResult } from '#shared/types'
 import { debounceRef } from '~/utils/debounceRef'
 import { reportError } from '~/utils/error'
+import { fileIcon, folderIcon } from '~/utils/fileIcon'
 import { formatRelativeTime } from '~/utils/time'
 
 /**
@@ -25,7 +25,7 @@ export function useFileList() {
   function decorate(items: FileItem[]): FileItem[] {
     return items.map((item) => ({
       ...item,
-      icon: import.meta.client ? (FileIcons.getClassWithColor(item.name) ?? '') : '',
+      icon: item.isDirectory ? folderIcon(item.name) : fileIcon(item.name),
       relativeTime: formatRelativeTime(item.mtime)
     }))
   }
