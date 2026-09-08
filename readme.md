@@ -1,8 +1,6 @@
-# disk
+# disk-next
 
-一个简单的局域网云盘，用于局域网内传输文件。
-
-基于 Nuxt 4（Nitro）+ TypeScript 构建：单进程、单端口、无代理配置，`nuxt build` 后直接 `node` 运行。
+基于 Next.js（App Router）+ TypeScript 构建：单进程、单端口、无代理配置，`next build` 后直接 `node` 运行。
 
 ## 功能
 
@@ -33,7 +31,7 @@
 ```bash
 pnpm install
 pnpm dev       # 开发，端口读 config.json
-pnpm typecheck # 类型检查（vue-tsc）
+pnpm typecheck # 类型检查（tsc --noEmit）
 pnpm build     # 构建并打包到 dist/（自包含发布目录）
 pnpm start     # 生产运行（读 config.json 的 port，并监听 0.0.0.0）
 pnpm test      # 接口冒烟测试（需先启动服务）
@@ -51,7 +49,7 @@ pnpm test      # 接口冒烟测试（需先启动服务）
 }
 ```
 
-> 端口由 `start.mjs` 读取后注入环境变量再启动 Nitro；`dest` 会基于运行目录解析，
+> 端口由 `start.mjs` 读取后注入环境变量再启动 Next；`dest` 会基于运行目录解析，
 > 根目录不存在时自动创建，运行中若被删除也会自动重建。
 
 ## 构建与部署
@@ -60,11 +58,14 @@ pnpm test      # 接口冒烟测试（需先启动服务）
 
 ```
 dist/
-├── .output/              服务端 + 静态资源（含运行时依赖，已解引用符号链接）
-├── start.mjs             启动脚本（读 config.json 端口）
-├── ecosystem.config.cjs  PM2 配置
-├── config.json           运行配置（可改 dest / port / hasDel）
-└── package.json          type: module + 启动命令
+├── .next/static/        前端静态资源（standalone 不会自带，由 release 脚本补齐）
+├── node_modules/        服务端运行时依赖（已解引用符号链接）
+├── public/              favicon / robots.txt
+├── server.js            Next standalone 入口
+├── start.mjs            启动脚本（读 config.json 端口）
+├── ecosystem.config.cjs PM2 配置
+├── config.json          运行配置（可改 dest / port / hasDel）
+└── package.json         type: module + 启动命令
 ```
 
 **部署到服务器**：把 `dist/` 整体拷贝到服务器，然后**在 dist 目录内**运行：
@@ -95,32 +96,45 @@ pm2 相关命令只有在构建产物 `dist/` 里才会出现，开发目录保�
 > 若用 fnm 管理 Node，启动 PM2 前需保证 node 在 PATH 中（如 `eval "$(fnm env --shell bash)"`）。
 > `start.mjs` 以「运行目录」为基准读 config.json 并解析 `dest`，部署到服务器时务必 `cd dist` 后再运行。
 
-## 目录结构（Nuxt 4）
+## 目录结构（Next.js App Router）
 
 ```
-app/                    前端源码（Nuxt 4 默认 srcDir）
-  app.vue               根布局：<NuxtPage /> + Toast + AppDialog
-  pages/index.vue       主页面
-  components/           FileBreadcrumb、FileTable、MoveDialog、ContextMenu、DropZone、Toast、AppDialog
-  composables/          useFileList、useFileAction、useDrop、useSelectAll、useToast、useDialog
-  plugins/              theme.client.ts（主题初始化）
-  utils/                浏览器端工具（文件选择、拖拽收集、下载、错误提示、防抖 ref、相对时间）
-  assets/css/index.less 样式
-server/                 服务端（留在根目录）
-  api/                  文件路由即接口，无需手动注册
-    list.post.ts        目录列表 / 搜索（stat 并发、目录优先排序）
-    create.post.ts      新建文件夹
-    delete.post.ts      删除（幂等，异步 rm）
-    rename.post.ts      重命名
-    move.post.ts        移动
-    upload.post.ts      上传（busboy 流式落盘、中断回滚）
-    download.get.ts     下载（单文件直推 / 多文件流式 ZIP）
-    download/preview.get.ts  预览
-  plugins/00.config.ts  启动时加载配置并打印访问地址
-  utils/                config / path / fs / format
-shared/types/           前后端共用类型契约（FileItem、ApiResponse…）与第三方包类型声明
-scripts/smoke.mjs       接口冒烟测试
+app/                    前端 + 路由（遵循 App Router 文件约定）
+  layout.tsx            根布局：metadata / viewport + 主题防闪烁脚本 + Toast + AppDialog
+  page.tsx              页面入口（Suspense + DiskManager）
+  error.tsx             路由级错误边界（'use client' + reset）
+  loading.tsx           路由加载态（骨架屏）
+  not-found.tsx         404 页面
+  favicon.ico           站点图标（文件约定，自动注入 link）
+  globals.css           全局样式（由原 index.less 转换）
+  api/                  Route Handler，文件路径即接口
+    list/route.ts       目录列表 / 搜索（stat 并发、目录优先排序）
+    create/route.ts     新建文件夹
+    delete/route.ts     删除（幂等，异步 rm）
+    rename/route.ts     重命名
+    move/route.ts       移动
+    upload/route.ts     上传（busboy 流式落盘、中断回滚）
+    download/route.ts   下载（单文件直推 / 多文件流式 ZIP）
+    download/preview/route.ts 预览
+components/             UI 组件（DiskManager 为客户端边界）
+  DiskManager.tsx       文件管理器主界面
+  FileBreadcrumb / FileTable / ContextMenu / DropZone / MoveDialog /
+  ListSkeleton / Transition / Toast / AppDialog / icons.tsx
+lib/
+  types.ts              前后端共用类型契约（FileItem、ApiResponse…）
+  client/               hooks（useFileList、useFileAction、useDrop）、请求、toast/dialog store、浏览器工具
+  server/               config / path / fs / format / http（带 server-only 边界保护）
+instrumentation.ts      启动钩子：按 NEXT_RUNTIME 分流加载 Node 侧逻辑
+instrumentation-node.ts Node 运行时启动逻辑（打印访问地址）
+types/archiver.d.ts     archiver v8 的类型补充
+scripts/                dev.mjs / release.mjs / smoke.mjs
+start.mjs               生产启动脚本
+next.config.ts          serverExternalPackages + output: 'standalone'
 ```
+
+代码约定：全仓库导入统一走 `@/*` 别名；`'use client'` 只出现在客户端边界组件，
+纯 hook / 工具模块不携带；`lib/server/*` 顶部 `import 'server-only'`，一旦被客户端
+误引用会在构建期直接报错。
 
 ## 接口
 
@@ -141,13 +155,14 @@ scripts/smoke.mjs       接口冒烟测试
 
 服务端与前端全量使用 TypeScript（`strict` 已开启）：
 
-- `#shared/types` 是前后端唯一的数据契约（`FileItem` / `ApiResponse` / `ListResult` 等），
-  Nuxt 4 的 `shared/` 目录对 app 与 server 双向可见
-- 组件统一 `<script setup lang="ts">`，props / emits / model 均使用泛型声明
+- `lib/types.ts` 是前后端唯一的数据契约（`FileItem` / `ApiResponse` / `ListResult` 等）
+- `lib/server/http.ts` 提供基于 `NextResponse` 的 `json / fail / readJson / nodeToWeb / handle`，
+  统一替代 Nitro 的 `defineEventHandler / createError / setHeader / sendStream`，
+  错误始终以 `{ message }` JSON 返回，前端 `reportError` 取值链路不变
 - `start.mjs` 与 `scripts/*.mjs` 是纯 Node 脚本，保持 `.mjs`（无需引入 tsx 即可直接 `node` 运行）
-- `archiver` v8 的 `ZipArchive` 具名导出缺类型，在 `shared/types/archiver.d.ts` 中做最小声明
+- `archiver` v8 的 `ZipArchive` 具名导出缺类型，在 `types/archiver.d.ts` 中做最小声明
 - 文件图标使用 `@baybreezy/file-extension-icon`（自带类型、零依赖），返回 base64 SVG data URI，
-  在 `app/utils/fileIcon.ts` 收口，无需引入图标字体样式
+  在 `lib/client/fileIcon.ts` 收口，无需引入图标字体样式
 
 ## 安全与健壮性
 
@@ -162,10 +177,30 @@ scripts/smoke.mjs       接口冒烟测试
 - 上传响应返回实际落盘名（重名时带序号）
 - 删除接口幂等，目标已不存在时返回成功而非 500
 
+## 与原 Nuxt 版的差异（实现层面）
+
+功能、接口、交互、视觉、配置与发布流程完全对齐，仅框架对应关系不同：
+
+| Nuxt 版                | Next 版                                            |
+| ---------------------- | -------------------------------------------------- |
+| `pages/index.vue`      | `app/page.tsx` + `components/DiskManager.tsx`（`'use client'`） |
+| Nitro `server/api/*`   | `app/api/**/route.ts`（`runtime = 'nodejs'`）        |
+| `server/plugins/00.config.ts` | 根目录 `instrumentation.ts`                   |
+| `#shared/types`        | `lib/types.ts`                                      |
+| composables            | `lib/client/*` hooks（语义不变）                    |
+| `$fetch`（ofetch）     | `lib/client/request.ts` 的 `apiFetch`               |
+| `<Teleport>` / `<Transition>` | `createPortal` / `components/Transition.tsx` |
+| `assets/css/index.less`| `app/globals.css`（Less 仅用嵌套，1:1 转纯 CSS）     |
+| `.output`              | `.next/standalone`（release 脚本补拷静态资源与 public）|
+
 ## 已知取舍
 
-- `ssr: false`（SPA）。这是局域网文件管理器，首屏依赖浏览器 API，关闭 SSR 更简单；
-  如需 SSR，把 `nuxt.config.ts` 的 `ssr` 改回 `true`（图标库不依赖 DOM，无需 `<ClientOnly>`）。
+- 页面为客户端渲染（`'use client'` + `dynamic = 'force-dynamic'`），等价原项目的 `ssr: false`：
+  这是局域网文件管理器，首屏依赖浏览器 API，关闭 SSR 更简单。
+- 包管理器固定为 pnpm（锁文件为 `pnpm-lock.yaml`）。由于 `output: 'standalone'` 会把
+  `node_modules` 结构原样搬入 `.next/standalone`，而 Windows 上创建符号链接默认需要管理员权限，
+  pnpm 默认的符号链接布局会让 `next build` 以 EPERM 失败，因此 `.npmrc` 里强制
+  `node-linker=hoisted`（平铺布局），保证在无特殊权限的 Windows 上也能构建。
 - 未做 Docker / 单文件打包，如需可另行添加。
 
 ## 冒烟测试
@@ -186,8 +221,8 @@ BASE=http://localhost:3000 node scripts/smoke.mjs
 ## 已知环境注意事项
 
 部分 IDE 会通过 `NODE_OPTIONS` 注入把 Node 的删除操作重定向到回收站的 shim。
-**从这个 IDE 内置终端启动服务时，删除文件可能失败或进入回收站**，同时 `nuxt build` 清理构建缓存会报
-`[safe-delete] 操作失败`。用系统终端正常执行不受影响；若必须在 IDE 终端内构建，可在命令前清除该变量：
+**从这个 IDE 内置终端启动服务时，删除文件可能失败或进入回收站**，同时 `next build` 可能因
+文件重命名失败而报错。用系统终端正常执行不受影响；若必须在 IDE 终端内构建，可在命令前清除该变量：
 
 ```bash
 env -u NODE_OPTIONS pnpm build

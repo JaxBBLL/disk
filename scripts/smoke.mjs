@@ -7,7 +7,7 @@
  */
 import http from 'node:http'
 
-const BASE = process.env.BASE || 'http://localhost:8887'
+const BASE = process.env.BASE || 'http://localhost:9527'
 
 // 测试专用根目录
 const T = 'smoke-root'
@@ -20,10 +20,10 @@ let failed = 0
 function check(name, ok, detail) {
   if (ok) {
     passed += 1
-    console.log(`  \u2713 ${name}`)
+    console.log(`  ✓ ${name}`)
   } else {
     failed += 1
-    console.log(`  \u2717 ${name}${detail === undefined ? '' : ` -> ${JSON.stringify(detail)}`}`)
+    console.log(`  ✗ ${name}${detail === undefined ? '' : ` -> ${JSON.stringify(detail)}`}`)
   }
 }
 
@@ -150,11 +150,7 @@ async function main() {
     rootAfterUpload.json?.data?.some((i) => i.name === '中文文件.txt'),
     rootAfterUpload.json?.data?.map((i) => i.name)
   )
-  check(
-    '响应返回实际落盘名',
-    up1.json?.data?.[0] === '中文文件.txt',
-    up1.json?.data
-  )
+  check('响应返回实际落盘名', up1.json?.data?.[0] === '中文文件.txt', up1.json?.data)
 
   await upload('a.txt', 'first', p('upload-dir'))
   await upload('a.txt', 'second', p('upload-dir'))
@@ -183,10 +179,13 @@ async function main() {
   const dupForm = new FormData()
   dupForm.append('files', new Blob(['d1']), 'dup.txt')
   dupForm.append('files', new Blob(['d2']), 'dup.txt')
-  const dupRes = await fetch(`${BASE}/api/upload?filePath=${encodeURIComponent(p('upload-dir'))}`, {
-    method: 'POST',
-    body: dupForm
-  })
+  const dupRes = await fetch(
+    `${BASE}/api/upload?filePath=${encodeURIComponent(p('upload-dir'))}`,
+    {
+      method: 'POST',
+      body: dupForm
+    }
+  )
   const dupJson = await dupRes.json().catch(() => null)
   check(
     '批次内同名自动区分序号',
