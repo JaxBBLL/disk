@@ -5,23 +5,30 @@
  * 服务端产出与前端消费共用同一份类型，避免字段漂移。
  */
 
-/** 列表项：由 server/api/list.post.ts 产出，前端表格 / 排序 / 选择直接消费 */
+/**
+ * 列表项：由 server/api/list.post.ts 产出，前端表格 / 排序 / 选择直接消费。
+ *
+ * 故意不放图标 / 相对时间等「客户端可派生字段」——
+ * 避免每条目多带 1–2 KB 的 SVG dataURI 进入 JSON，
+ * 减少响应体积、序列化与 hydrate 成本。
+ * 前端模板里按需调用 fileIcon() / formatRelativeTime() 即可，
+ * 浏览器对同 dataURI 的 <img> 会复用解码结果。
+ *
+ * 字节数 `bytes` 直接传原始数值，前端按阈值自适应 KB/MB/GB 显示，
+ * 排序时也免去 parseFloat。
+ */
 export interface FileItem {
   name: string
   isDirectory: boolean
   /** 相对于根目录的 POSIX 路径 */
   filePath: string
-  /** KB 字符串，由服务端 toFixed(2) 产出；前端排序时 parseFloat */
-  size: string
+  /** 文件字节数；目录固定为 0 */
+  bytes: number
   birthtime: string
   updatetime: string
   /** 时间戳（ms），供前端展示相对时间 */
   mtime: number
   hasDel: boolean
-  /** 前端 decorate 时附加：文件/文件夹图标（base64 SVG data URI） */
-  icon?: string
-  /** 前端 decorate 时附加：相对时间文案 */
-  relativeTime?: string
 }
 
 /** 统一响应包装。isExit = 1 表示目标已存在 */

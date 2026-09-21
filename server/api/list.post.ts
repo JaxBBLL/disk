@@ -53,7 +53,8 @@ export default defineEventHandler(async (event): Promise<ListResult> => {
       name: entry.name,
       isDirectory,
       filePath: toRelPath(join(dir, entry.name)),
-      size: (info.size / 1024).toFixed(2),
+      // 原始字节数，前端按阈值展示 KB/MB/GB；排序也直接用数值比较
+      bytes: info.size,
       birthtime: formatDate(info.birthtime, 'YYYY-MM-DD HH:mm'),
       updatetime: formatDate(info.mtime, 'YYYY-MM-DD HH:mm'),
       mtime: info.mtimeMs, // 时间戳（ms），供前端展示相对时间

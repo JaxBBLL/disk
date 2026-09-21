@@ -1,17 +1,19 @@
 import type { FileItem, ListBody, ListResult } from '#shared/types'
 import { debounceRef } from '~/utils/debounceRef'
 import { reportError } from '~/utils/error'
-import { fileIcon, folderIcon } from '~/utils/fileIcon'
 import { formatRelativeTime } from '~/utils/time'
 
 /**
  * 文件列表：路径取自路由 query（?path=a/b/c），刷新与前进后退天然可用。
+ *
+ * list 用 shallowRef 避免 Vue 给每个 FileItem 创建深响应 Proxy；图标与相对时间
+ * 改为模板内按需调用，进一步减少响应体积与首屏 hydrate 成本。
  */
 export function useFileList() {
   const route = useRoute()
   const router = useRouter()
 
-  const list = ref<FileItem[]>([])
+  const list = shallowRef<FileItem[]>([])
   const loading = ref(false)
   const hasDel = ref(false)
   const keyword = debounceRef('')
@@ -22,14 +24,6 @@ export function useFileList() {
       .filter(Boolean)
   )
 
-  function decorate(items: FileItem[]): FileItem[] {
-    return items.map((item) => ({
-      ...item,
-      icon: item.isDirectory ? folderIcon(item.name) : fileIcon(item.name),
-      relativeTime: formatRelativeTime(item.mtime)
-    }))
-  }
-
   async function refresh(): Promise<void> {
     loading.value = true
 
@@ -39,11 +33,13 @@ export function useFileList() {
         body: { name: keyword.value, filePath: paths.value } satisfies ListBody
       })
 
-      list.value = decorate(res?.data ?? [])
+      // shallowRef 的内部数组不会被深度代理；markRaw 防止 Vue 把这个数组再包一层 Proxy，
+      // 后续重排 / 选择操作的性能更好。
+      list.value = markRaw(res?.data ?? [])
       hasDel.value = Boolean(res?.hasDel)
     } catch (error) {
       reportError(error, '读取目录失败')
-      list.value = []
+      list.value = markRaw([])
     } finally {
       loading.value = false
     }
@@ -59,6 +55,7 @@ export function useFileList() {
 
   watch([() => route.query.path, keyword], refresh, { immediate: true })
 
+  // 暴露 formatRelativeTime 给模板复用，避免组件自己再 import。
   return {
     list,
     loading,
@@ -67,6 +64,7 @@ export function useFileList() {
     keyword,
     refresh,
     navigate,
-    entryDirectory
+    entryDirectory,
+    formatRelativeTime
   }
 }

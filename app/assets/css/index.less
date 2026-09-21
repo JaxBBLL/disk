@@ -8,6 +8,8 @@
   --surface-color: #fff;
   --text-color: #333;
   --shadow-color: rgba(200, 200, 200, 0.75);
+  /* 水印颜色：深浅主题各自不同；用 mask-image 配合 color 让变量生效 */
+  --watermark-color: #666;
 }
 
 [data-theme="dark"] {
@@ -19,6 +21,7 @@
   --surface-color: #202329;
   --text-color: #e6e8eb;
   --shadow-color: rgba(0, 0, 0, 0.5);
+  --watermark-color: #9aa0a8;
 }
 
 * {
@@ -101,29 +104,29 @@ body {
   background-color: var(--surface-color);
 }
 
-/* 上传提示水印：铺满整个页面，位于所有交互层之下 */
+/*
+  上传提示水印：铺满整个页面，位于所有交互层之下。
+  用 SVG 雪碧图 + mask-image 平铺，颜色由 --watermark-color 控制。
+  相比原 48 个 <span v-for> + transform 旋转，零 JS 节点、零额外重排。
+*/
 .upload-watermark {
   position: fixed;
   inset: 0;
   z-index: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  align-content: space-around;
-  justify-items: center;
-  row-gap: 48px;
-  padding: 24px 12px;
   overflow: hidden;
   pointer-events: none;
   user-select: none;
 
-  span {
-    font-size: 16px;
-    letter-spacing: 1px;
-    white-space: nowrap;
-    color: var(--gray-color);
-    opacity: 0.23;
-    transform: rotate(-18deg);
-  }
+  // mask 把不透明区域变成可见，颜色由 color 控制。
+  // 透明度 0.23 直接写进 SVG fill-opacity，水印颜色由 var(--watermark-color) 提供。
+  background-color: var(--watermark-color);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 80' width='220' height='80'><text x='110' y='50' font-family='system-ui,-apple-system,sans-serif' font-size='16' letter-spacing='1' fill='black' fill-opacity='0.23' text-anchor='middle' transform='rotate(-18 110 40)'>支持拖拽上传</text></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 80' width='220' height='80'><text x='110' y='50' font-family='system-ui,-apple-system,sans-serif' font-size='16' letter-spacing='1' fill='black' fill-opacity='0.23' text-anchor='middle' transform='rotate(-18 110 40)'>支持拖拽上传</text></svg>");
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 220px 80px;
+  mask-size: 220px 80px;
+  opacity: 0.7;
 }
 
 .no-table {

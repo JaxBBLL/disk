@@ -66,34 +66,19 @@
                   @click.stop="item.isDirectory ? emit('open', item) : emit('preview', item)"
                 >
                   <img
-                    v-if="item.icon"
                     class="icon"
-                    :src="item.icon"
+                    :src="item.isDirectory ? folderIcon(item.name) : fileIcon(item.name)"
                     alt=""
                     width="14"
                     height="14"
                   />
-                  <svg
-                    v-else
-                    class="icon"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
                   <div class="file-name-text" :title="item.name">{{ item.name }}</div>
                 </div>
               </td>
               <td>
-                <div v-if="!item.isDirectory">{{ item.size }} KB</div>
+                <div v-if="!item.isDirectory">{{ formatFileSize(item.bytes) }}</div>
               </td>
-              <td :title="item.updatetime">{{ item.relativeTime }}</td>
+              <td :title="item.updatetime">{{ formatRelativeTime(item.mtime) }}</td>
             </tr>
           </template>
         </ContextMenu>
@@ -126,6 +111,9 @@
 
 <script setup lang="ts">
 import type { FileItem, MenuItem } from '#shared/types'
+import { fileIcon, folderIcon } from '~/utils/fileIcon'
+import { formatFileSize } from '~/utils/formatFileSize'
+import { formatRelativeTime } from '~/utils/time'
 
 type SortKey = 'name' | 'size' | 'mtime'
 
@@ -173,8 +161,8 @@ const sortedList = computed<FileItem[]>(() => {
 
     if (sortKey.value === 'size') {
       result =
-        (a.isDirectory ? 0 : parseFloat(a.size) || 0) -
-        (b.isDirectory ? 0 : parseFloat(b.size) || 0)
+        (a.isDirectory ? 0 : a.bytes || 0) -
+        (b.isDirectory ? 0 : b.bytes || 0)
     } else if (sortKey.value === 'mtime') {
       result = (a.mtime || 0) - (b.mtime || 0)
     } else {

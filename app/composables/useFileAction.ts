@@ -25,6 +25,7 @@ const encodePaths = (segments: string | string[]): string =>
 interface RequestOptions {
   method?: 'POST' | 'GET'
   body?: Record<string, unknown> | FormData
+  onUploadProgress?: (event: { loaded: number; total?: number }) => void
 }
 
 export interface UseFileActionOptions {
@@ -41,30 +42,23 @@ export interface UseFileActionOptions {
  * paths 为当前目录（ref），refresh 用于操作后刷新列表，loading 用于展示忙碌状态。
  */
 export function useFileAction({ paths, refresh, loading }: UseFileActionOptions) {
-  const busy = ref(false)
   const uploading = ref(false)
   const uploadingLabel = ref('')
   const { confirm, prompt } = useDialog()
 
   async function request<T>(url: string, options: RequestOptions): Promise<T | null> {
     try {
-      return await $fetch<T>(url, options)
+      return await $fetch<T>(url, options as Parameters<typeof $fetch<T>>[1])
     } catch (error) {
       reportError(error)
       return null
     }
   }
 
-  const setBusy = (value: boolean) => {
-    busy.value = value
-    if (loading) {
-      loading.value = value
-    }
-  }
-
   /**
    * 统一的上传入口：items 为 [{ file, relativePath }]。
-   * 按「目标目录」分组合并请求，大文件夹不会逐文件发请求。
+   * 按「目标目录」分组合并请求，多目录并发上传（不串行）。
+   * 进度通过 $fetch 的 onUploadProgress 累加到 uploadingLabel。
    */
   async function uploadGrouped(items: DropItem[]): Promise<boolean> {
     if (!items?.length) {
@@ -82,32 +76,59 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
       groups.get(key)!.push(file)
     }
 
-    setBusy(true)
     uploading.value = true
-    uploadingLabel.value = `正在上传 ${items.length} 个文件…`
+    loading.value = true
+    const totalBytes = items.reduce((sum, { file }) => sum + (file.size || 0), 0)
+    let loadedBytes = 0
+    uploadingLabel.value = `准备上传 ${items.length} 个文件…`
+
+    /**
+     * 上传一个目录分组。每个分组维护自己的 lastLoaded，用于
+     * 把 ofetch 给出的「本组累计字节」换算成「本组新增字节」，
+     * 再累加到全批次的 loadedBytes。
+     */
+    const uploadOneGroup = async ([key, files]: [string, File[]]): Promise<boolean> => {
+      const form = new FormData()
+      for (const file of files) {
+        form.append('files', file)
+      }
+
+      const groupTotal = files.reduce((sum, f) => sum + (f.size || 0), 0)
+      let lastLoaded = 0
+
+      const res = await request<UploadResult>(`/api/upload?filePath=${encodePaths(key)}`, {
+        method: 'POST',
+        body: form,
+        onUploadProgress: (event) => {
+          const delta = event.loaded - lastLoaded
+          lastLoaded = event.loaded
+          loadedBytes += delta
+          const mb = (n: number) => (n / 1048576).toFixed(1)
+          uploadingLabel.value = totalBytes
+            ? `已上传 ${mb(loadedBytes)} / ${mb(totalBytes)} MB`
+            : `已上传 ${items.length} 个文件…`
+        }
+      })
+
+      // 兜底：若 ofetch 没触发 progress（极小文件），按 groupTotal 补齐
+      if (lastLoaded === 0) {
+        loadedBytes += groupTotal
+      }
+
+      return Boolean(res)
+    }
 
     let ok = true
 
     try {
-      for (const [key, files] of groups) {
-        const form = new FormData()
-        for (const file of files) {
-          form.append('files', file)
-        }
+      const results = await Promise.allSettled(
+        Array.from(groups, (entry) => uploadOneGroup(entry))
+      )
 
-        const res = await request<UploadResult>(`/api/upload?filePath=${encodePaths(key)}`, {
-          method: 'POST',
-          body: form
-        })
-
-        if (!res) {
-          ok = false
-        }
-      }
+      ok = results.every((r) => r.status === 'fulfilled' && r.value === true)
     } finally {
-      // 无论成功还是抛错，都必须复位状态，否则列表会永远转圈
       uploading.value = false
-      setBusy(false)
+      loading.value = false
     }
 
     if (ok) {
@@ -268,7 +289,6 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
   }
 
   return {
-    busy,
     uploading,
     uploadingLabel,
     uploadFiles,

@@ -1,29 +1,18 @@
-import type { Theme } from "#shared/types";
+import { applyTheme, getStoredTheme } from '~/utils/theme'
 
-/** 应用启动前根据本地存储设置主题，避免首屏闪烁 */
+/**
+ * 应用启动前根据本地存储设置主题，避免首屏闪烁。
+ * 跟随系统时订阅 prefers-color-scheme 变化，自动同步。
+ */
 export default defineNuxtPlugin(() => {
-  const saved = localStorage.getItem("disk-theme");
-  const initial: Theme =
-    saved === "light" || saved === "dark" || saved === "system"
-      ? saved
-      : "system";
-  applyTheme(initial);
+  applyTheme(getStoredTheme())
 
-  // 系统主题变化时，若用户选择「跟随系统」则同步切换
+  // 仅在 system 模式下才有意义；切换到 light/dark 时再读 localStorage 判断
   window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", () => {
-      const cur = localStorage.getItem("disk-theme");
-      if (cur === "system") applyTheme("system");
-    });
-});
-
-function applyTheme(theme: Theme) {
-  const effective: "light" | "dark" =
-    theme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : theme;
-  document.documentElement.setAttribute("data-theme", effective);
-}
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => {
+      if (getStoredTheme() === 'system') {
+        applyTheme('system')
+      }
+    })
+})

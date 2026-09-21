@@ -227,10 +227,12 @@
           </header>
 
           <main class="main">
-            <!-- 提示文案以水印形式铺满整个页面 -->
-            <div class="upload-watermark" aria-hidden="true">
-              <span v-for="i in 48" :key="i">支持拖拽上传</span>
-            </div>
+            <!--
+                提示文案以水印形式铺满整个页面。
+                改为 ::before + background-image 一张雪碧图，避免渲染 48 个 span 与
+                每个 span 的 transform: rotate(-18deg) 影响主线程与重排。
+              -->
+            <div class="upload-watermark" aria-hidden="true"></div>
 
             <FileTable
               v-model:selected="selected"
@@ -281,6 +283,7 @@
 
 <script setup lang="ts">
 import type { FileItem, MenuItem, Theme } from "#shared/types";
+import { applyTheme, getStoredTheme, saveTheme } from "~/utils/theme";
 
 const {
   list,
@@ -323,23 +326,14 @@ watch(paths, () => {
 // ---------- 上传下拉与主题 ----------
 const uploadOpen = ref(false);
 const themeOpen = ref(false);
-const theme = ref<Theme>("system");
-
-onMounted(() => {
-  theme.value =
-    (localStorage.getItem("disk-theme") as Theme | null) ?? "system";
-});
+// 初始值与 plugin 同步：plugin 已根据 localStorage 设置了 data-theme，
+// 这里只维护「用户选择的选项」，避免 onMounted 再写一次 attribute 引起闪烁。
+const theme = ref<Theme>(getStoredTheme());
 
 const setTheme = (t: Theme) => {
   theme.value = t;
-  localStorage.setItem("disk-theme", t);
-  const effective =
-    t === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light"
-      : t;
-  document.documentElement.setAttribute("data-theme", effective);
+  saveTheme(t);
+  applyTheme(t);
 };
 
 // ---------- 右键菜单 ----------
