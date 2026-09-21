@@ -37,25 +37,22 @@ export function formatDate(
 
   let result = fmt
 
-  if (/(Y+)/.test(result)) {
-    result = result.replace(RegExp.$1, `${value.getFullYear()}`.substr(4 - RegExp.$1.length))
-  }
+  // 用 replace 回调一次性拿到匹配内容，避免依赖过时的 RegExp.$1 全局状态。
+  result = result.replace(/(Y+)/g, (match) =>
+    `${value.getFullYear()}`.slice(4 - match.length)
+  )
 
-  if (/(E+)/.test(result)) {
-    result = result.replace(
-      RegExp.$1,
-      (RegExp.$1.length > 1 ? (RegExp.$1.length > 2 ? '星期' : '周') : '') +
-        (WEEK[value.getDay()] ?? '')
-    )
-  }
+  result = result.replace(/(E+)/g, (match) => {
+    const prefix = match.length > 2 ? '星期' : match.length > 1 ? '周' : ''
+    return prefix + (WEEK[value.getDay()] ?? '')
+  })
 
   for (const k of Object.keys(o)) {
-    if (new RegExp(`(${k})`).test(result)) {
-      result = result.replace(
-        RegExp.$1,
-        RegExp.$1.length === 1 ? `${o[k]}` : `00${o[k]}`.substr(`${o[k]}`.length)
-      )
-    }
+    const value = o[k]
+    result = result.replace(new RegExp(`(${k})`, 'g'), (_match, captured: string) => {
+      const padded = `00${value}`
+      return captured.length === 1 ? `${value}` : padded.slice(-captured.length)
+    })
   }
 
   return result

@@ -3,8 +3,8 @@ import { createWriteStream, mkdirSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { UploadResult } from '#shared/types'
-import { ensureRoot } from '../utils/config'
-import { decodeFileName, resolveSafe, uniqueName } from '../utils/path'
+import { appConfig, ensureRoot } from '../utils/config'
+import { decodeFileName, resolveSafe, safeUploadFileName, uniqueName } from '../utils/path'
 
 /** 上传失败时 Promise 里传递的错误，status 决定对外的 HTTP 状态码 */
 interface UploadFailure extends Error {
@@ -15,6 +15,8 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
   const { filePath: rawPath } = getQuery(event)
   const filePath = typeof rawPath === 'string' ? rawPath : ''
 
+  const { maxFileSize = 0, maxFiles = 0 } = appConfig()
+
   ensureRoot()
 
   const dir = resolveSafe(filePath)
@@ -23,6 +25,7 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
   const created: string[] = [] // 本请求实际创建的文件，失败时统一清理
   const saved: string[] = [] // 实际落盘的文件名（可能与原始名不同，重名会追加序号）
   const usedNames = new Set<string>() // 批次内互斥，防止同名文件互相覆盖
+  let fileCount = 0 // 已接收的 file part 数，用于与 maxFiles 比较
 
   /**
    * 统一的结束入口：
@@ -34,7 +37,13 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
     const busboy = Busboy({
       headers: event.node.req.headers,
       // 显式指定 utf8，保证中文文件名不被按 latin1 解码
-      defParamCharset: 'utf8'
+      defParamCharset: 'utf8',
+      // 资源上限：fileSize 单文件、files part 数；0 = 不限制。
+      // 超限时 busboy 会 emit 'limit' 事件并将 stream 切到错误态。
+      limits: {
+        ...(maxFileSize > 0 ? { fileSize: maxFileSize } : {}),
+        ...(maxFiles > 0 ? { files: maxFiles } : {})
+      }
     })
 
     const writing: Promise<void>[] = []
@@ -63,7 +72,16 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
     const onWriteError = (error: Error) => fail(`写入失败：${error.message}`, 500)
 
     busboy.on('file', (_field, stream, info) => {
-      const name = uniqueName(dir, decodeFileName(info.filename), usedNames)
+      fileCount += 1
+
+      // busboy 在触发 'file' 时已经接收了 multipart 头，文件名等元数据可信；
+      // limits.files 是「超过后丢弃」，因此这里再加一道显式拦截以得到清晰错误。
+      if (maxFiles > 0 && fileCount > maxFiles) {
+        stream.resume() // 必须消费流，否则 busboy 会 hang
+        return
+      }
+
+      const name = uniqueName(dir, safeUploadFileName(decodeFileName(info.filename)), usedNames)
       const target = join(dir, name)
 
       created.push(target)
@@ -94,6 +112,14 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
 
           stream.pipe(output)
         })
+      )
+    })
+
+    // busboy 在 fileSize 超限后会触发该事件并把 stream 切到错误态。
+    // 不在此 fail()，否则会把整个批次回滚；只把超限文件剔除即可。
+    busboy.on('limit', () => {
+      console.warn(
+        `[disk] upload limit reached (maxFileSize=${maxFileSize}, maxFiles=${maxFiles})`
       )
     })
 

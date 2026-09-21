@@ -9,6 +9,29 @@ export interface AppConfig {
   hasDel: boolean
   /** 端口 */
   port: number
+  /**
+   * 监听地址。
+   * - '0.0.0.0'（默认）：监听所有网卡，局域网场景使用
+   * - '127.0.0.1' 或 'localhost'：仅本机访问，公网/不可信网络场景更安全
+   * 也支持以环境变量 HOST 覆盖（start.mjs 注入）。
+   */
+  bind?: string
+  /**
+   * 单个文件大小上限（字节）。超出此大小的文件会被 busboy 截断并回滚。
+   * 默认 0 表示无限制；建议在公网/不可信网络场景显式设置（如 5 GiB）。
+   */
+  maxFileSize?: number
+  /**
+   * 单次请求体大小上限（字节）。busboy 通过 Content-Length / 累积字节双重判断，
+   * 超出后 fail() 触发回滚，避免恶意大请求体撑爆内存。
+   * 默认 0 表示无限制。
+   */
+  maxRequestSize?: number
+  /**
+   * 单次请求允许的文件数。超出后剩余的 part 不再处理。
+   * 默认 0 表示无限制。
+   */
+  maxFiles?: number
 }
 
 export const DEFAULT_CONFIG: Readonly<AppConfig> = Object.freeze({

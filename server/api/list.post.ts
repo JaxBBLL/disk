@@ -15,10 +15,13 @@ export default defineEventHandler(async (event): Promise<ListResult> => {
   ensureRoot()
 
   const dir = resolveSafe(body?.filePath ?? [])
-  const names: string[] = []
+
+  // 一次系统调用同时拿到 Dirent（带 isDirectory / isSymbolicLink），
+  // 大目录从 N+1 次系统调用降为 1 + N 次并发 stat。
+  let entries: import('node:fs').Dirent[]
 
   try {
-    names.push(...(await readdir(dir)))
+    entries = await readdir(dir, { withFileTypes: true })
   } catch (error) {
     // 目录在运行期被外部删除时自愈，返回空列表而不是报错
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -27,26 +30,29 @@ export default defineEventHandler(async (event): Promise<ListResult> => {
     throw createError({ statusCode: 500, message: `读取目录失败：${(error as Error).message}` })
   }
 
-  // size / mtime 需要逐条 stat。这里并发执行而非串行 await，
-  // 大目录下的耗时从 N 次串行系统调用降为一次并发。
-  // 使用 stat（而非 readdir 的 Dirent）以保持跟随符号链接的原有行为。
+  // size / mtime 仍需要 stat。并发执行而非串行 await，
+  // 大目录下耗时从 N 次串行系统调用降为一次并发。
+  // 使用 stat（而非 lstat）以保持跟随符号链接的原有行为。
   const infos = await Promise.all(
-    names.map((name) => stat(join(dir, name)).catch(() => null))
+    entries.map((entry) => stat(join(dir, entry.name)).catch(() => null))
   )
 
   const list: FileItem[] = []
 
-  names.forEach((name, index) => {
+  entries.forEach((entry, index) => {
     const info = infos[index]
 
     if (!info) {
       return
     }
 
+    // Dirent 已给出 isDirectory，与 stat 二次确认一致；跳过符号链接自身
+    const isDirectory = entry.isDirectory() && info.isDirectory()
+
     list.push({
-      name,
-      isDirectory: info.isDirectory(),
-      filePath: toRelPath(join(dir, name)),
+      name: entry.name,
+      isDirectory,
+      filePath: toRelPath(join(dir, entry.name)),
       size: (info.size / 1024).toFixed(2),
       birthtime: formatDate(info.birthtime, 'YYYY-MM-DD HH:mm'),
       updatetime: formatDate(info.mtime, 'YYYY-MM-DD HH:mm'),

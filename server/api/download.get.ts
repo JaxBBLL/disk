@@ -32,12 +32,15 @@ export default defineEventHandler(async (event) => {
   // 单文件直接推流，不做压缩
   const [first] = targets
 
-  if (targets.length === 1 && first && statSync(first).isFile()) {
-    const file = first
-    setHeader(event, 'Content-Type', 'application/octet-stream')
-    setHeader(event, 'Content-Length', statSync(file).size)
-    setHeader(event, 'Content-Disposition', disposition(basename(file)))
-    return sendStream(event, createReadStream(file))
+  if (targets.length === 1 && first) {
+    const fileStat = statSync(first)
+
+    if (fileStat.isFile()) {
+      setHeader(event, 'Content-Type', 'application/octet-stream')
+      setHeader(event, 'Content-Length', fileStat.size)
+      setHeader(event, 'Content-Disposition', disposition(basename(first)))
+      return sendStream(event, createReadStream(first))
+    }
   }
 
   // 多文件 / 目录：边打包边推流，不落临时文件
@@ -46,6 +49,16 @@ export default defineEventHandler(async (event) => {
 
   // archiver v8 起为纯 ESM 具名导出，使用 ZipArchive 类而非工厂函数
   const archive = new ZipArchive({ zlib: { level: 9 } })
+
+  // 打包过程中若目录里的文件被外部删 / 权限被改，archiver 会以 warning/error 形式抛出，
+  // 默认会冒泡到 Nitro 再返回 500；改为只打日志，让本地 zip 局部缺文件即可，
+  // 避免整个下载失败（浏览器已开始接收数据，无法重试）。
+  archive.on('warning', (error: Error) => {
+    console.warn('[disk] zip warning:', error.message)
+  })
+  archive.on('error', (error: Error) => {
+    console.error('[disk] zip error:', error.message)
+  })
 
   for (const target of targets) {
     if (statSync(target).isFile()) {

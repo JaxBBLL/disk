@@ -5,6 +5,13 @@ import { appConfig } from './config'
 // Windows / Unix 均不允许出现在文件名中的字符
 export const ILLEGAL_NAME_CHARS = /[<>:"/\\|?*]/
 
+/**
+ * Windows 保留设备名。Windows 上 `CON.txt`、`PRN`、`COM1` 等名称无法通过 unlink 删除
+ * （系统拒绝访问），必须在服务端创建/重命名阶段就拦截，否则用户上传后再也无法清理。
+ * 规则：不区分大小写、匹配整个文件名（不含扩展名前缀也可匹配，扩展名不影响保留语义）。
+ */
+const WINDOWS_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i
+
 /** 路径片段，前端既可能传数组也可能传 'a/b' 字符串 */
 export type PathInput = string | string[] | null | undefined
 
@@ -52,6 +59,16 @@ export function safeFileName(name: string): string {
       .replace(/\0/g, '')
       .trim() || 'unnamed'
   )
+}
+
+/**
+ * 给上传用的文件名兜底：去除路径分隔符后再检查 Windows 保留名，
+ * 命中则改名为下划线前缀，避免「无法删除」的死文件。
+ */
+export function safeUploadFileName(name: string): string {
+  const cleaned = safeFileName(name)
+
+  return WINDOWS_RESERVED.test(cleaned) ? `_${cleaned}` : cleaned
 }
 
 /**
@@ -105,6 +122,9 @@ export function assertValidName(name?: string): string {
   }
   if (ILLEGAL_NAME_CHARS.test(value)) {
     throw Object.assign(new Error('名称包含非法字符'), { statusCode: 400 })
+  }
+  if (WINDOWS_RESERVED.test(value)) {
+    throw Object.assign(new Error('名称为系统保留名'), { statusCode: 400 })
   }
 
   return value
