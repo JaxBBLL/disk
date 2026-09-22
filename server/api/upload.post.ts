@@ -128,7 +128,11 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
 
     // 客户端中途断开：req 没有正常读完就 close，半成品必须回滚
     const req = event.node.req
-    const onAbort = () => fail('客户端中断了上传', 400)
+    let aborted = false
+    const onAbort = () => {
+      aborted = true
+      fail('客户端中断了上传', 400)
+    }
     req.on('aborted', onAbort)
     req.on('error', onAbort)
     req.on('close', () => {
@@ -137,8 +141,13 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
       }
     })
 
-    // close 在所有 part 解析完成后触发，此时再等所有写流结束
-    busboy.on('close', () => finish(null))
+    // close 在所有 part 解析完成后触发，此时再等所有写流结束。
+    // 注意：客户端 abort 时 busboy 也会 emit close，必须用 aborted 标志跳过，
+    // 否则 finish(null) 会把"被中断"覆盖成"成功"，导致不进入回滚分支。
+    busboy.on('close', () => {
+      if (aborted) return
+      finish(null)
+    })
 
     event.node.req.pipe(busboy)
   })

@@ -556,14 +556,79 @@ body {
   right: 16px;
   z-index: 10000;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 10px 14px 12px;
   background: var(--primary-color);
   color: #fff;
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
   font-size: 13px;
+  min-width: 280px;
+}
+
+.upload-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-progress-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upload-progress-pct {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  margin-left: auto;
+  min-width: 4ch;
+  text-align: right;
+}
+
+.upload-progress-cancel {
+  margin-left: 4px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  flex-shrink: 0;
+}
+
+.upload-progress-cancel:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.upload-progress-cancel:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.upload-progress-track {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.28);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.upload-progress-bar {
+  height: 100%;
+  background-color: #fff;
+  border-radius: 2px;
+  /* 平滑过渡：进度回调频繁，但进度条走得太「敏感」会闪；150ms 折中 */
+  transition: width 150ms ease-out;
 }
 
 .spinner {

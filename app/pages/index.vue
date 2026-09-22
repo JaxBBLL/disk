@@ -93,8 +93,30 @@
       <!-- 上传进度提示 -->
       <Transition name="toast">
         <div v-if="uploading" class="upload-progress">
-          <span class="spinner" aria-hidden="true"></span>
-          <span>{{ uploadingLabel }}</span>
+          <div class="upload-progress-row">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="upload-progress-label">{{ uploadingLabel }}</span>
+            <span class="upload-progress-pct">{{ uploadingProgress }}%</span>
+            <button
+              type="button"
+              class="upload-progress-cancel"
+              title="取消上传"
+              aria-label="取消上传"
+              @click="cancelUpload"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="upload-progress-track">
+            <div
+              class="upload-progress-bar"
+              :style="{ width: `${uploadingProgress}%` }"
+              role="progressbar"
+              :aria-valuenow="uploadingProgress"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            />
+          </div>
         </div>
       </Transition>
     </template>
@@ -126,6 +148,8 @@ const {
 const {
   uploading,
   uploadingLabel,
+  uploadingProgress,
+  cancelUpload,
   pickAndUploadFiles,
   pickAndUploadFolder,
   uploadDropped,
