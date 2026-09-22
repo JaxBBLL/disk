@@ -14,6 +14,7 @@ import { useDialog } from '~/ui/composables/useDialog'
 import { ILLEGAL_NAME_CHARS, downloadByUrl, selectFiles, selectFolder } from '~/utils/file'
 import { reportError } from '~/utils/error'
 import type { DropItem } from '~/utils/file'
+import { shouldChunk, uploadInChunks } from '~/utils/chunked-upload'
 
 /** 目录路径 → 查询参数值。同时接受路径片段数组或已拼接的字符串 */
 const encodePaths = (segments: string | string[]): string =>
@@ -129,48 +130,96 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
     }
 
     /**
-     * 上传一个目录分组。每个分组维护自己的 lastLoaded，用于
-     * 把 ofetch 给出的「本组累计字节」换算成「本组新增字节」，
-     * 再累加到全批次的 loadedBytes。
+     * 上传一个目录分组：
+     * - 小文件（< 5MB）走单次 FormData 上传（/api/upload），一次提交同组所有文件
+     * - 大文件走分片上传（/api/upload/init + chunk + merge），单文件串行
+     *
+     * 同一分组里小文件 + 大文件混合：先批量发小的，再逐个发大的。
+     * 每组内 lastLoaded 用于把 ofetch 的「本组累计字节」换算成「本组新增字节」；
+     * 单个大文件内部 onProgress 也按同样思路累加（维护 per-file lastLoaded）。
      */
     const uploadOneGroup = async ([key, files]: [string, File[]]): Promise<boolean> => {
-      const form = new FormData()
-      for (const file of files) {
-        form.append('files', file)
+      const small = files.filter((f) => !shouldChunk(f.size || 0))
+      const big = files.filter((f) => shouldChunk(f.size || 0))
+
+      let ok = true
+      const mb = (n: number) => (n / 1048576).toFixed(1)
+      const updateLabel = () => {
+        uploadingLabel.value = totalBytes
+          ? `已上传 ${mb(loadedBytes)} / ${mb(totalBytes)} MB`
+          : `已上传 ${items.length} 个文件…`
       }
 
-      const groupTotal = files.reduce((sum, f) => sum + (f.size || 0), 0)
-      let lastLoaded = 0
-
-      const res = await request<UploadResult>(`/api/upload?filePath=${encodePaths(key)}`, {
-        method: 'POST',
-        body: form,
-        signal: controller.signal,
-        onUploadProgress: (event) => {
-          const delta = event.loaded - lastLoaded
-          lastLoaded = event.loaded
-          loadedBytes += delta
-          const mb = (n: number) => (n / 1048576).toFixed(1)
-          uploadingLabel.value = totalBytes
-            ? `已上传 ${mb(loadedBytes)} / ${mb(totalBytes)} MB`
-            : `已上传 ${items.length} 个文件…`
-          syncProgress()
+      // ---- 小文件：原单次 FormData 上传 ----
+      if (small.length) {
+        const form = new FormData()
+        for (const file of small) {
+          form.append('files', file)
         }
-      })
 
-      // 兜底：若 ofetch 没触发 progress（极小文件），按 groupTotal 补齐
-      if (lastLoaded === 0) {
-        loadedBytes += groupTotal
-      } else {
-        // event.loaded 通常 ≤ groupTotal（multipart 边界 + 请求头字节），
-        // 此处按组完成时再补一次到 groupTotal，避免最后一刻停在 99%。
-        if (lastLoaded < groupTotal) {
+        const groupTotal = small.reduce((sum, f) => sum + (f.size || 0), 0)
+        let lastLoaded = 0
+
+        const res = await request<UploadResult>(`/api/upload?filePath=${encodePaths(key)}`, {
+          method: 'POST',
+          body: form,
+          signal: controller.signal,
+          onUploadProgress: (event) => {
+            const delta = event.loaded - lastLoaded
+            lastLoaded = event.loaded
+            loadedBytes += delta
+            updateLabel()
+            syncProgress()
+          }
+        })
+
+        if (lastLoaded === 0) {
+          loadedBytes += groupTotal
+        } else if (lastLoaded < groupTotal) {
           loadedBytes += groupTotal - lastLoaded
         }
-      }
-      syncProgress()
+        syncProgress()
 
-      return Boolean(res)
+        if (!res) ok = false
+      }
+
+      // ---- 大文件：分片上传 ----
+      for (const file of big) {
+        const fileSize = file.size || 0
+        let lastFileLoaded = 0
+        try {
+          await uploadInChunks({
+            file,
+            filePath: key.split('/').filter(Boolean),
+            signal: controller.signal,
+            onProgress: (loaded) => {
+              const safe = Math.min(loaded, fileSize)
+              const delta = safe - lastFileLoaded
+              lastFileLoaded = safe
+              loadedBytes += delta
+              updateLabel()
+              syncProgress()
+            }
+          })
+          // onProgress 已经在每个分片末尾给出完整 fileSize 增量，
+          // 这里不再额外累加。
+        } catch (error) {
+          if (
+            (error instanceof DOMException && error.name === 'AbortError') ||
+            (typeof error === 'object' && error !== null && 'name' in error && (error as { name?: string }).name === 'AbortError')
+          ) {
+            // 取消：request() 的 catch 也会捕获一次，这里不重复报
+          } else {
+            reportError(error)
+          }
+          ok = false
+        }
+      }
+
+      // 最后再刷新一次 label（防止大文件最后一次 onProgress 后整体进度对齐）
+      updateLabel()
+
+      return ok
     }
 
     let ok = true

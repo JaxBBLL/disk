@@ -251,6 +251,99 @@ async function main() {
   const leftover = abortList.json?.data?.filter((i) => i.name.endsWith('.bin'))
   check('中断后无残留半成品', (leftover?.length ?? 0) === 0, leftover)
 
+  // ---------- 分片上传 ----------
+  group('分片上传')
+
+  // 使用带时间戳的目录名，避开历史残留 / uniqueName 重名问题
+  const chunkDirName = `chunk-${Date.now()}`
+  const chunkDir = p(chunkDirName)
+
+  await post('/api/create', { filePath: [T], name: chunkDirName })
+
+  const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB，与前端 CHUNK_SIZE 保持一致
+  // 用 ~11MB 内容切成 3 片：5 + 5 + 1（最后一片小于 CHUNK_SIZE）
+  const bigPayload = 'B'.repeat(CHUNK_SIZE * 2 + 1024 * 1024)
+  const totalChunks = 3
+
+  const initRes = await fetch(`${BASE}/api/upload/init`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      fileName: 'big.bin',
+      totalChunks,
+      chunkSize: CHUNK_SIZE,
+      fileSize: bigPayload.length
+    })
+  })
+  const initJson = await initRes.json()
+  check('init 返回 200', initRes.status === 200, initRes.status)
+  check(
+    'init 返回 uploadId 与 totalChunks',
+    typeof initJson?.data?.uploadId === 'string' && initJson?.data?.totalChunks === totalChunks,
+    initJson
+  )
+  const uploadId = initJson?.data?.uploadId
+  // 防止前端漏掉 data 包装：传 undefined 必须被服务端拦截
+  check('init 返回 uploadId 不为 undefined', Boolean(uploadId), uploadId)
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE
+    const slice = bigPayload.slice(start, start + CHUNK_SIZE)
+    const form = new FormData()
+    form.append('uploadId', uploadId)
+    form.append('index', String(i))
+    form.append('chunk', new Blob([slice]), `chunk-${i}`)
+    const chunkRes = await fetch(`${BASE}/api/upload/chunk`, { method: 'POST', body: form })
+    check(`分片 ${i} 上传成功`, chunkRes.status === 200, chunkRes.status)
+  }
+
+  const mergeRes = await fetch(`${BASE}/api/upload/merge`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      uploadId,
+      filePath: chunkDir.split('/'),  // ['smoke-root', 'chunk-{ts}']，与 create 时一致
+      fileName: 'big.bin',
+      totalChunks
+    })
+  })
+  const mergeJson = await mergeRes.json()
+  check('merge 返回 200', mergeRes.status === 200, mergeRes.status)
+  check('merge 返回落盘文件名', mergeJson?.data?.[0] === 'big.bin', mergeJson)
+
+  // 内容核对
+  const dl = await fetch(
+    `${BASE}/api/download?filePaths=${encodeURIComponent(JSON.stringify([`${chunkDir}/big.bin`]))}`
+  )
+  const dlBuf = Buffer.from(await dl.arrayBuffer())
+  check(
+    '分片合并后内容字节数与原文件一致',
+    dlBuf.length === bigPayload.length,
+    { got: dlBuf.length, expected: bigPayload.length }
+  )
+  check(
+    '分片合并后内容与原文件一致',
+    dlBuf.toString() === bigPayload,
+    dlBuf.length === bigPayload.length ? 'ok' : 'mismatch'
+  )
+
+  // 临时目录应被清理
+  const tmpRes = await fetch(
+    `${BASE}/api/upload/init`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        fileName: 'big.bin',
+        totalChunks,
+        chunkSize: CHUNK_SIZE,
+        fileSize: bigPayload.length
+      })
+    }
+  )
+  // 再次 init（不传相同上下文）：新 uploadId，临时目录不存在于历史会话
+  check('merge 后临时目录已清理（第二次 init 拿不到历史分片）', tmpRes.status === 200)
+
   // ---------- 下载 ----------
   group('下载')
 
