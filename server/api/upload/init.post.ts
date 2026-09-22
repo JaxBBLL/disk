@@ -2,6 +2,7 @@ import type { ApiResponse } from '#shared/types'
 import { mkdirSync } from 'node:fs'
 import type { UploadSession } from '../../utils/upload-tmp'
 import {
+  cleanupUpload,
   createSession,
   getTmpDir,
   getUploadedChunks,
@@ -61,6 +62,15 @@ export default defineEventHandler(async (event): Promise<ApiResponse<InitData>> 
     (sum, idx) => sum + computeChunkSize(session, idx),
     0
   )
+
+  // 客户端 init 后立即 abort（拿不到 uploadId 调 cancel 接口）：
+  // 在服务端兜底清理掉这个孤儿会话与临时目录。
+  // 多用户并发安全：uploadId 全机器唯一，不会误伤其他用户。
+  const req = event.node.req
+  req.on('aborted', () => {
+    console.log(`[disk] init aborted for ${session.uploadId}, cleaning tmp`)
+    cleanupUpload(session.uploadId)
+  })
 
   return {
     code: 200,

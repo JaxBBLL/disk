@@ -54,6 +54,14 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
    * 后端 busboy 的 'aborted' / 'close' 监听会把已写入的半成品文件清理掉。
    */
   const uploadingAbort = ref<AbortController | null>(null)
+  /**
+   * 当前批次产生的所有 uploadId（来自大文件分片上传）。
+   * cancelUpload() 时除了 abort 信号，还会 fire-and-forget 调
+   * /api/upload/cancel 让服务端清掉对应的临时目录。
+   * uploadId 由服务端按时间戳+随机+序号生成，全机器唯一，
+   * 多用户并发下每个 tab/window 各自独立，互不影响。
+   */
+  const uploadingUploadIds = new Set<string>()
   const { confirm, prompt } = useDialog()
 
   async function request<T>(url: string, options: RequestOptions): Promise<T | null> {
@@ -80,6 +88,24 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
   /** 中断当前批次的所有上传请求；幂等（无进行中时调用安全） */
   function cancelUpload(): void {
     uploadingAbort.value?.abort()
+    // 通知服务端清掉本次批次产生的所有 uploadId 对应的临时目录。
+    // 用原生 fetch 而非 $fetch：$fetch 无法在 signal 已 abort 的情况下再发请求，
+    // 而 cancel 触发的清理请求不能被主 controller 的 abort 误伤。
+    // keepalive: true 保证即使页面立刻关闭，清理请求也会到达服务端。
+    const ids = Array.from(uploadingUploadIds)
+    uploadingUploadIds.clear()
+    for (const uploadId of ids) {
+      try {
+        fetch('/api/upload/cancel', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ uploadId }),
+          keepalive: true
+        }).catch(() => {})
+      } catch {
+        // fire-and-forget；服务端清理失败不影响前端状态
+      }
+    }
   }
 
   /**
@@ -187,8 +213,10 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
       for (const file of big) {
         const fileSize = file.size || 0
         let lastFileLoaded = 0
+        let fileUploadId: string | undefined
+        let failed = false
         try {
-          await uploadInChunks({
+          const result = await uploadInChunks({
             file,
             filePath: key.split('/').filter(Boolean),
             signal: controller.signal,
@@ -199,20 +227,57 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
               loadedBytes += delta
               updateLabel()
               syncProgress()
+            },
+            // 一旦 init 返回 uploadId 立刻登记，cancelUpload 才能遍历到
+            onUploadId: (id) => {
+              fileUploadId = id
+              uploadingUploadIds.add(id)
             }
           })
-          // onProgress 已经在每个分片末尾给出完整 fileSize 增量，
-          // 这里不再额外累加。
-        } catch (error) {
-          if (
-            (error instanceof DOMException && error.name === 'AbortError') ||
-            (typeof error === 'object' && error !== null && 'name' in error && (error as { name?: string }).name === 'AbortError')
-          ) {
-            // 取消：request() 的 catch 也会捕获一次，这里不重复报
+
+          if (!result.savedName) {
+            failed = true
+            ok = false
           } else {
+            // merge 成功：服务端已自动 cleanup 临时目录
+            uploadingUploadIds.delete(result.uploadId)
+          }
+        } catch (error) {
+          failed = true
+          ok = false
+          // uploadInChunks 失败时把 uploadId 挂到 error 上；
+          // 也可能根本没拿到（init 阶段就 abort），此时 fileUploadId 仍 undefined。
+          const errUploadId =
+            (typeof error === 'object' &&
+              error !== null &&
+              'uploadId' in error &&
+              (error as { uploadId?: string }).uploadId) ||
+            undefined
+          if (errUploadId) fileUploadId = errUploadId
+
+          const isAbort =
+            (error instanceof DOMException && error.name === 'AbortError') ||
+            (typeof error === 'object' &&
+              error !== null &&
+              'name' in error &&
+              (error as { name?: string }).name === 'AbortError')
+
+          if (!isAbort) {
             reportError(error)
           }
-          ok = false
+        } finally {
+          // 失败（非 cancel 触发的）且 uploadId 仍在 set 里 → 主动发 cancel POST
+          // 触发服务端清理孤儿临时目录。
+          // （cancel 触发的失败：cancelUpload 会统一处理）
+          if (failed && fileUploadId && uploadingUploadIds.has(fileUploadId)) {
+            fetch('/api/upload/cancel', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ uploadId: fileUploadId }),
+              keepalive: true
+            }).catch(() => {})
+            uploadingUploadIds.delete(fileUploadId)
+          }
         }
       }
 
@@ -249,6 +314,10 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
     if (cancelled) {
       // 用户取消：不弹成功 toast，给一个轻提示；后端 busboy 已经回滚半成品
       toast.info(`已取消上传（${items.length} 个文件）`)
+      // 取消后刷新列表：本次批次可能已经写入了部分小文件（< 5MB 的 FormData
+      // 单次上传可能在 abort 之前就完成），或者部分大文件分片已落地。
+      // 无论哪种情况，列表当前状态都可能是过时的，需要刷新一次。
+      await refresh().catch(() => {})
       return false
     }
 

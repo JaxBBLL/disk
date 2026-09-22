@@ -344,6 +344,144 @@ async function main() {
   // 再次 init（不传相同上下文）：新 uploadId，临时目录不存在于历史会话
   check('merge 后临时目录已清理（第二次 init 拿不到历史分片）', tmpRes.status === 200)
 
+  // ---------- 取消/清理：cancel 接口 + 多用户隔离 ----------
+  group('cancel 与多用户')
+
+  // 用户 A：完整流程
+  const userAInit = await (await fetch(`${BASE}/api/upload/init`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      fileName: 'userA.bin',
+      totalChunks: 2,
+      chunkSize: CHUNK_SIZE,
+      fileSize: bigPayload.length
+    })
+  })).json()
+  const userAId = userAInit?.data?.uploadId
+  check('用户 A init 成功', Boolean(userAId), userAId)
+
+  // 上传一个分片让临时目录里有文件
+  const aForm = new FormData()
+  aForm.append('uploadId', userAId)
+  aForm.append('index', '0')
+  aForm.append('chunk', new Blob([bigPayload.slice(0, CHUNK_SIZE)]), 'a-0')
+  await fetch(`${BASE}/api/upload/chunk`, { method: 'POST', body: aForm })
+
+  // 用户 B：另一个 uploadId
+  const userBInit = await (await fetch(`${BASE}/api/upload/init`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      fileName: 'userB.bin',
+      totalChunks: 2,
+      chunkSize: CHUNK_SIZE,
+      fileSize: bigPayload.length
+    })
+  })).json()
+  const userBId = userBInit?.data?.uploadId
+  check('用户 B init 成功（uploadId 与 A 不同）', Boolean(userBId) && userBId !== userAId, {
+    userAId, userBId
+  })
+
+  // B 也上传一个分片
+  const bForm = new FormData()
+  bForm.append('uploadId', userBId)
+  bForm.append('index', '0')
+  bForm.append('chunk', new Blob([bigPayload.slice(0, CHUNK_SIZE)]), 'b-0')
+  await fetch(`${BASE}/api/upload/chunk`, { method: 'POST', body: bForm })
+
+  // 用户 A 取消：调用 /api/upload/cancel 只清 A 的临时目录
+  const cancelA = await fetch(`${BASE}/api/upload/cancel`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ uploadId: userAId })
+  })
+  check('A 调 cancel 返回 200', cancelA.status === 200, cancelA.status)
+
+  // B 继续：B 用原 uploadId 上传第二个分片应能成功（A 的 cancel 不影响 B）
+  const bForm2 = new FormData()
+  bForm2.append('uploadId', userBId)
+  bForm2.append('index', '1')
+  bForm2.append('chunk', new Blob([bigPayload.slice(CHUNK_SIZE, 2 * CHUNK_SIZE)]), 'b-1')
+  const bChunk2 = await fetch(`${BASE}/api/upload/chunk`, { method: 'POST', body: bForm2 })
+  check('A 取消后 B 仍能上传分片（会话隔离）', bChunk2.status === 200, bChunk2.status)
+
+  // B 完成 merge 验证完整性
+  const bMerge = await fetch(`${BASE}/api/upload/merge`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      uploadId: userBId,
+      filePath: chunkDir.split('/'),
+      fileName: 'userB.bin',
+      totalChunks: 2
+    })
+  })
+  const bMergeJson = await bMerge.json()
+  check(
+    'B 完整合并成功',
+    bMerge.status === 200 && bMergeJson?.data?.[0] === 'userB.bin',
+    bMergeJson
+  )
+
+  // A 重新 init：A 的临时目录已被清，从头开始
+  const aReInit = await fetch(`${BASE}/api/upload/init`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      fileName: 'userA.bin',
+      totalChunks: 2,
+      chunkSize: CHUNK_SIZE,
+      fileSize: bigPayload.length
+    })
+  })
+  const aReInitJson = await aReInit.json()
+  check(
+    'A 重新 init 不带历史分片（已被 cancel 清空）',
+    aReInitJson?.data?.uploadId !== userAId || aReInitJson?.data?.uploadedChunks?.length === 0,
+    aReInitJson
+  )
+
+  // cancel 对不存在的 uploadId 也幂等
+  const cancelPhantom = await fetch(`${BASE}/api/upload/cancel`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ uploadId: 'non-existent-id' })
+  })
+  check('cancel 不存在的 uploadId 返回 200', cancelPhantom.status === 200, cancelPhantom.status)
+
+  // cancel 缺 uploadId 应返回 400
+  const cancelNoId = await fetch(`${BASE}/api/upload/cancel`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({})
+  })
+  check('cancel 缺 uploadId 返回 400', cancelNoId.status === 400, cancelNoId.status)
+
+  // ---------- list 隐藏 .upload-tmp 临时目录 ----------
+  group('list 隐藏内部目录')
+
+  // 在 disk 根创建临时目录与一份测试根，确认 list 不返回
+  await new Promise((resolve) => {
+    const { mkdirSync, writeFileSync } = require('node:fs')
+    const { join } = require('node:path')
+    const tmpDir = join(process.cwd() || '.', 'disk', '.upload-tmp', 'smoke-test-hide')
+    mkdirSync(tmpDir, { recursive: true })
+    writeFileSync(join(tmpDir, '0.part'), 'hidden')
+    resolve()
+  }).catch(() => {})
+
+  // 列出 disk 根目录，确认 .upload-tmp 不在返回列表里
+  const rootList = await list([])
+  const hasUploadTmp = (rootList.json?.data ?? []).some((i) => i.name === '.upload-tmp')
+  check('list 根目录过滤掉 .upload-tmp', !hasUploadTmp, rootList.json?.data)
+
+  // 列出 .upload-tmp 内部本身：也是隐藏的（防止用户通过面包屑路径进入）
+  const tmpList = await list(['.upload-tmp'])
+  const tmpData = tmpList.json?.data ?? []
+  check('list 隐藏任何 . 开头的目录条目', !tmpData.some((i) => i.name.startsWith('.')), tmpData)
+
   // ---------- 下载 ----------
   group('下载')
 

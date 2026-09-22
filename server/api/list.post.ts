@@ -30,6 +30,10 @@ export default defineEventHandler(async (event): Promise<ListResult> => {
     throw createError({ statusCode: 500, message: `读取目录失败：${(error as Error).message}` })
   }
 
+  // 隐藏分片上传的临时空间（与业务文件隔开，避免污染 UI）：
+  // 任意层级的「以 . 开头的目录」都不返回。
+  entries = entries.filter((entry) => !(entry.isDirectory() && entry.name.startsWith('.')))
+
   // size / mtime 仍需要 stat。并发执行而非串行 await，
   // 大目录下耗时从 N 次串行系统调用降为一次并发。
   // 使用 stat（而非 lstat）以保持跟随符号链接的原有行为。
