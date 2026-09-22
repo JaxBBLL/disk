@@ -41,11 +41,14 @@ export default defineEventHandler(async (event) => {
       setHeader(event, 'Content-Disposition', disposition(basename(first)))
       return sendStream(event, createReadStream(first))
     }
+    // 单目录：zip 内根用 basename(t)，zip 文件名也用目录名（用户预期）
+    setHeader(event, 'Content-Type', 'application/zip')
+    setHeader(event, 'Content-Disposition', disposition(`${basename(first)}.zip`))
+  } else {
+    // 多文件 / 多目录：保持默认命名（含时间戳，多选场景避免文件名碰撞）
+    setHeader(event, 'Content-Type', 'application/zip')
+    setHeader(event, 'Content-Disposition', disposition(`disk-${Date.now()}.zip`))
   }
-
-  // 多文件 / 目录：边打包边推流，不落临时文件
-  setHeader(event, 'Content-Type', 'application/zip')
-  setHeader(event, 'Content-Disposition', disposition(`disk-${Date.now()}.zip`))
 
   // archiver v8 起为纯 ESM 具名导出，使用 ZipArchive 类而非工厂函数
   const archive = new ZipArchive({ zlib: { level: 9 } })

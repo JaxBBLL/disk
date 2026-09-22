@@ -514,6 +514,42 @@ async function main() {
   )
   check('下载不存在的文件返回 404', missing.status === 404)
 
+  // 单目录下载：zip 文件名应使用目录原名，而不是默认的 disk-{ts}.zip
+  // 准备：建一个测试目录，里面放一个文件
+  await post('/api/create', { filePath: [T], name: 'photos' })
+  const m = new FormData()
+  m.append('files', new Blob(['img1']), 'cat.png')
+  await fetch(`${BASE}/api/upload?filePath=${encodeURIComponent(p('photos'))}`, {
+    method: 'POST',
+    body: m
+  })
+
+  const singleDir = await fetch(
+    `${BASE}/api/download?filePaths=${encodeURIComponent(JSON.stringify([p('photos')]))}`
+  )
+  const disp = singleDir.headers.get('content-disposition') || ''
+  // RFC 5987: attachment; filename*=UTF-8''<encoded name>
+  const singleDirName = decodeURIComponent(disp.split("UTF-8''")[1] || '')
+  check(
+    '单目录下载 zip 文件名用目录原名',
+    singleDirName === 'photos.zip',
+    { disp, singleDirName }
+  )
+
+  // 多选场景保持默认命名（含时间戳）
+  const multiZip = await fetch(
+    `${BASE}/api/download?filePaths=${encodeURIComponent(
+      JSON.stringify([p('photos'), p('upload-dir')])
+    )}`
+  )
+  const multiDisp = multiZip.headers.get('content-disposition') || ''
+  const multiName = decodeURIComponent(multiDisp.split("UTF-8''")[1] || '')
+  check(
+    '多选场景仍用 disk-{ts}.zip 默认命名',
+    /^disk-\d+\.zip$/.test(multiName),
+    multiName
+  )
+
   // ---------- 预览 ----------
   group('预览')
 
