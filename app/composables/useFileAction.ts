@@ -9,8 +9,8 @@ import type {
   RenameBody,
   UploadResult
 } from '#shared/types'
-import { toast } from '~/composables/useToast'
-import { useDialog } from '~/composables/useDialog'
+import { toast } from '~/ui/composables/useToast'
+import { useDialog } from '~/ui/composables/useDialog'
 import { ILLEGAL_NAME_CHARS, downloadByUrl, selectFiles, selectFolder } from '~/utils/file'
 import { reportError } from '~/utils/error'
 import type { DropItem } from '~/utils/file'

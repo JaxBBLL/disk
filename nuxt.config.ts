@@ -59,5 +59,17 @@ export default defineNuxtConfig({
 
   typescript: {
     strict: true
+  },
+
+  // 自动注册 ~/ui/components 下的组件（VModal / VDropdown / VToast）
+  // 与自动导入 ~/ui/composables 下的 hook（useToast / useDialog）
+  // 未来抽离 ui 目录为独立 npm 包时，把这一项改成 @scope/ui 的 nuxt module 即可。
+  components: [
+    // 默认的 app/components/ 也必须显式列出，否则会被覆盖
+    { path: '~/components', pathPrefix: false },
+    { path: '~/ui/components', pathPrefix: false }
+  ],
+  imports: {
+    dirs: ['ui/composables']
   }
 })

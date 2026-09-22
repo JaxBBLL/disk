@@ -1,25 +1,25 @@
 <template>
   <Teleport to="body">
-    <TransitionGroup name="toast" tag="div" class="toast-container">
-      <div v-for="item in toasts" :key="item.id" class="toast" :class="`toast-${item.type}`">
-        <span class="toast-icon" aria-hidden="true">{{ ICONS[item.type] }}</span>
-        <span class="toast-message">{{ item.message }}</span>
-        <button class="toast-close" aria-label="关闭" @click="dismiss(item.id)">×</button>
+    <TransitionGroup name="v-toast" tag="div" class="v-toast-container">
+      <div v-for="item in toasts" :key="item.id" class="v-toast" :class="`v-toast-${item.type}`">
+        <span class="v-toast-icon" aria-hidden="true">{{ ICONS[item.type] }}</span>
+        <span class="v-toast-message">{{ item.message }}</span>
+        <button class="v-toast-close" aria-label="关闭" @click="dismiss(item.id)">×</button>
       </div>
     </TransitionGroup>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { useToast } from '~/composables/useToast'
-import type { ToastType } from '~/composables/useToast'
+import { useToast } from '~/ui/composables/useToast'
+import type { ToastType } from '~/ui/composables/useToast'
 
 const ICONS: Record<ToastType, string> = { success: '✓', error: '✕', info: 'ℹ' }
 const { toasts, dismiss } = useToast()
 </script>
 
 <style scoped>
-.toast-container {
+.v-toast-container {
   position: fixed;
   top: 52px;
   right: 16px;
@@ -29,7 +29,7 @@ const { toasts, dismiss } = useToast()
   gap: 8px;
 }
 
-.toast {
+.v-toast {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -42,7 +42,7 @@ const { toasts, dismiss } = useToast()
   font-size: 13px;
 }
 
-.toast-icon {
+.v-toast-icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
@@ -54,24 +54,24 @@ const { toasts, dismiss } = useToast()
   font-size: 12px;
 }
 
-.toast-success .toast-icon {
+.v-toast-success .v-toast-icon {
   background: var(--primary-color);
 }
 
-.toast-error .toast-icon {
+.v-toast-error .v-toast-icon {
   background: var(--danger-color);
 }
 
-.toast-info .toast-icon {
+.v-toast-info .v-toast-icon {
   background: var(--gray-color);
 }
 
-.toast-message {
+.v-toast-message {
   flex: 1;
   color: var(--text-color);
 }
 
-.toast-close {
+.v-toast-close {
   border: 0;
   background: transparent;
   color: #999;
@@ -81,13 +81,13 @@ const { toasts, dismiss } = useToast()
   padding: 0;
 }
 
-.toast-enter-active,
-.toast-leave-active {
+.v-toast-enter-active,
+.v-toast-leave-active {
   transition: all 0.2s ease;
 }
 
-.toast-enter-from,
-.toast-leave-to {
+.v-toast-enter-from,
+.v-toast-leave-to {
   opacity: 0;
   transform: translateX(16px);
 }

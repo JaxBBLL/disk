@@ -1,5 +1,5 @@
 <template>
   <NuxtPage />
-  <Toast />
+  <VToast />
   <AppDialog />
 </template>

@@ -1,4 +1,4 @@
-import { toast } from '~/composables/useToast'
+import { toast } from '~/ui/composables/useToast'
 
 /** ofetch 抛出的错误形状，只需要读取文案 */
 interface ErrorLike {

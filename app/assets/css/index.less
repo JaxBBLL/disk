@@ -323,6 +323,19 @@ body {
   flex-shrink: 0;
 }
 
+/* 通用 <img> 图标：尺寸固定，主题切换时反色（SVG 内置 #666 描边） */
+.icon-img {
+  width: 14px;
+  height: 14px;
+  display: block;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .icon-img {
+  /* SVG 内的 stroke="#666" 反相后接近 #999，深色下可读 */
+  filter: invert(0.7);
+}
+
 .file-name {
   display: flex;
   align-items: center;
@@ -497,92 +510,7 @@ body {
   padding-right: 10px;
 }
 
-.modal-mask {
-  position: fixed;
-  z-index: 9998;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  transition: opacity 0.3s ease;
-
-  .modal-wrap {
-    min-width: 400px;
-    margin: auto;
-    border: none;
-    background-color: var(--surface-color);
-    outline: none;
-    padding: 0;
-  }
-
-  .modal-header {
-    padding: 10px 15px;
-    font-size: 14px;
-    border-bottom: 1px solid var(--border-color);
-  }
-
-  .modal-wrap .modal-content {
-    padding: 15px;
-    display: flex;
-    justify-content: flex-start;
-    align-items: flex-start;
-  }
-
-  .modal-wrap .modal-list {
-    min-width: 120px;
-    max-width: 200px;
-    border: 1px solid var(--primary-color);
-    max-height: 300px;
-    overflow: auto;
-  }
-
-  .modal-wrap .modal-list + .modal-list {
-    margin-left: -1px;
-  }
-
-  .modal-wrap .modal-item {
-    padding: 4px 10px;
-    display: flex;
-    cursor: pointer;
-
-    .name {
-      text-overflow: ellipsis;
-      overflow: hidden;
-      word-break: break-all;
-      white-space: nowrap;
-    }
-  }
-
-  .modal-wrap .modal-item.active {
-    background: var(--light-color);
-  }
-
-  .modal-wrap .modal-item + .modal-item {
-    border-top: 1px solid var(--primary-color);
-  }
-
-  .modal-wrap .modal-footer {
-    padding: 15px;
-    text-align: center;
-    border-top: 1px solid #d2d2d2;
-  }
-}
-
-.modal-enter-from {
-  opacity: 0;
-}
-
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-container,
-.modal-leave-to .modal-container {
-  -webkit-transform: scale(1.1);
-  transform: scale(1.1);
-}
+/* 弹窗壳样式已迁移到 VModal.vue；这里不再保留全局 .modal-* */
 
 /* 底部批量操作栏 */
 .batch-bar {
@@ -653,67 +581,11 @@ body {
   }
 }
 
-/* 下拉菜单（上传 / 主题） */
-.upload-dropdown,
-.theme-dropdown {
-  position: relative;
-}
-
-.upload-menu,
-.theme-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  min-width: 104px;
-  padding: 5px 0;
-  background-color: var(--surface-color);
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  z-index: 200;
-}
-
-.upload-menu .menu-item,
-.theme-menu .menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  cursor: pointer;
-  font-size: 13px;
-  white-space: nowrap;
-  color: var(--text-color);
-}
-
-.upload-menu .menu-item:hover,
-.theme-menu .menu-item:hover {
-  background-color: var(--light-color);
-  color: var(--primary-color);
-}
-
-.theme-menu .menu-item.active {
-  color: var(--primary-color);
-}
-
-.theme-menu .menu-item .check {
-  margin-left: auto;
-}
+/* 下拉菜单样式已迁移到 VDropdown.vue；这里保留 caret 与按钮样式 */
 
 .caret {
   margin-left: 4px;
   font-size: 10px;
-}
-
-.dropdown-fade-enter-active,
-.dropdown-fade-leave-active {
-  transition:
-    opacity 0.12s ease,
-    transform 0.12s ease;
-}
-
-.dropdown-fade-enter-from,
-.dropdown-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
 }
 
 /* 主题切换按钮 */
