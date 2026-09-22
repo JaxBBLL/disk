@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "一个的简单云盘，可以用来局域网传输文件",
+  "description": "一个简单的云盘，可以用来局域网传输文件",
   "author": "JaxBBLL",
   "license": "ISC",
   "scripts": {

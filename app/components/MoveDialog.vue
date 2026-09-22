@@ -96,7 +96,6 @@ watch(
 <style scoped>
 .move-dialog-tree {
   display: flex;
-  gap: -1px;
 }
 
 .modal-list {

@@ -13,8 +13,9 @@
  * 上层 useFileAction 把它合并进全批次的 loadedBytes。
  *
  * 中断：传入 AbortController.signal，三个请求任一被 abort → 抛出 AbortError，
- * 已上传的分片留在临时目录；用户重试时可调用同样的 fileName + size 再 init
- * 让 init 返回 uploadedChunks 列表实现断点续传（本仓库暂未做 UI 层面的恢复）。
+ * 已上传的分片留在临时目录；当前实现下重新 init 会拿到全新的 uploadId，
+ * 暂不自动续传已上传分片（需重传）。若未来支持断点续传，可利用 init 返回的
+ * uploadedChunks 列表跳过分片。
  */
 
 export const CHUNK_SIZE = 5 * 1024 * 1024 // 5 MB

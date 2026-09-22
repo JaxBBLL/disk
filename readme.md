@@ -132,6 +132,10 @@ scripts/smoke.mjs       接口冒烟测试
 | POST | `/api/rename`                          | 重命名，`body: { filePath, newName }`         |
 | POST | `/api/move`                            | 移动，`body: { filePaths, newFolder }`        |
 | POST | `/api/upload?filePath=a/b`             | 上传，`multipart/form-data`，字段名 `files`   |
+| POST | `/api/upload/init`                     | 分片上传初始化，`body: { fileName, totalChunks, chunkSize, fileSize }` |
+| POST | `/api/upload/chunk`                    | 上传单个分片，`multipart`：`uploadId` / `index` / `chunk` |
+| POST | `/api/upload/merge`                    | 合并分片，`body: { uploadId, filePath, fileName, totalChunks }` |
+| POST | `/api/upload/cancel`                   | 取消并清理临时分片，`body: { uploadId }`，幂等 |
 | GET  | `/api/download?filePaths=["a.txt"]`    | 下载，单文件直推，多个打包为 ZIP              |
 | GET  | `/api/download/preview?filePath=a.txt` | 预览，`Content-Disposition: inline`           |
 

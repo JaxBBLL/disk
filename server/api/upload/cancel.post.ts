@@ -1,5 +1,5 @@
 import type { ApiResponse } from '#shared/types'
-import { cleanupUpload } from '../../utils/upload-tmp'
+import { cleanupUpload, isValidUploadId } from '../../utils/upload-tmp'
 
 interface CancelBody {
   uploadId?: string
@@ -25,6 +25,11 @@ export default defineEventHandler(async (event): Promise<ApiResponse> => {
 
   if (!body?.uploadId || typeof body.uploadId !== 'string') {
     throw createError({ statusCode: 400, message: '缺少 uploadId' })
+  }
+
+  // 格式白名单：拦截 `../` 等穿越载荷，避免 rmSync 删掉 .upload-tmp 外的目录
+  if (!isValidUploadId(body.uploadId)) {
+    throw createError({ statusCode: 400, message: 'uploadId 格式非法' })
   }
 
   cleanupUpload(body.uploadId)

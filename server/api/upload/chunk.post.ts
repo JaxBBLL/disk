@@ -20,7 +20,15 @@ import { writeChunk } from '../../utils/upload-tmp'
  * 当成「1 个分片」直接灌进服务进程内存）。
  */
 export default defineEventHandler(async (event) => {
-  const { maxFileSize = 0 } = appConfig()
+  const { maxFileSize = 0, maxRequestSize = 0 } = appConfig()
+
+  // maxRequestSize：Content-Length 预检（分片本身已有 maxFileSize 兜底）
+  if (maxRequestSize > 0) {
+    const contentLength = Number(event.node.req.headers['content-length'] || 0)
+    if (contentLength > maxRequestSize) {
+      throw createError({ statusCode: 413, message: `请求体超过上限 ${maxRequestSize} 字节` })
+    }
+  }
 
   const result = await new Promise<{ uploadId: string; index: number }>((resolve, reject) => {
     let uploadId = ''
@@ -61,12 +69,22 @@ export default defineEventHandler(async (event) => {
         return
       }
 
+      let truncated = false
+      // fileSize 超限时 busboy 在文件流上 emit 'limit'，并截断后续数据
+      stream.on('limit', () => {
+        truncated = true
+      })
+
       const chunks: Buffer[] = []
       stream.on('data', (chunk: Buffer) => {
         chunks.push(chunk)
       })
       stream.on('end', () => {
         if (settled) return
+        if (truncated) {
+          finish(new Error(`分片超过 maxFileSize=${maxFileSize} 上限，已拒绝`))
+          return
+        }
         try {
           const data = Buffer.concat(chunks)
           writeChunk(uploadId, index, data)

@@ -32,8 +32,18 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UploadResul
     throw createError({ statusCode: 400, message: '参数错误' })
   }
 
-  if (!getUploadSession(body.uploadId)) {
+  const session = getUploadSession(body.uploadId)
+  if (!session) {
     throw createError({ statusCode: 404, message: 'uploadId 无效或已过期' })
+  }
+
+  // totalChunks 以服务端 session 为准，客户端传入值仅作兼容性校验。
+  // 否则恶意客户端可谎报更小的 totalChunks，把未上传的分片跳过、静默产出截断文件。
+  if (body.totalChunks !== session.totalChunks) {
+    throw createError({
+      statusCode: 400,
+      message: `totalChunks 不匹配（服务端 ${session.totalChunks}，客户端 ${body.totalChunks}）`
+    })
   }
 
   const dir = resolveSafe(body.filePath ?? [])
@@ -45,7 +55,7 @@ export default defineEventHandler(async (event): Promise<ApiResponse<UploadResul
   const target = join(dir, uniqueName(dir, safeName))
 
   try {
-    mergeChunks(body.uploadId, body.totalChunks, target)
+    mergeChunks(body.uploadId, session.totalChunks, target)
   } catch (error) {
     // 合并失败：清理临时目录与 session
     cleanupUpload(body.uploadId)

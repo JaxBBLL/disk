@@ -1,6 +1,6 @@
 import { ZipArchive } from 'archiver'
 import { createReadStream, existsSync, statSync } from 'node:fs'
-import { basename } from 'node:path'
+import { basename, dirname } from 'node:path'
 import { resolveSafe } from '../utils/path'
 
 // RFC 5987，保证中文下载名不乱码
@@ -63,11 +63,37 @@ export default defineEventHandler(async (event) => {
     console.error('[disk] zip error:', error.message)
   })
 
+  // 打包时避免不同目录下同名文件在 zip 根目录互相覆盖：
+  // 首次出现保持 basename，重复时追加父目录前缀，仍冲突则加序号。
+  const usedZipNames = new Set<string>()
+  const uniqueZipName = (target: string): string => {
+    const base = basename(target)
+    if (!usedZipNames.has(base)) {
+      usedZipNames.add(base)
+      return base
+    }
+    const parent = basename(dirname(target))
+    const withParent = parent ? `${parent}_${base}` : base
+    if (!usedZipNames.has(withParent)) {
+      usedZipNames.add(withParent)
+      return withParent
+    }
+    let n = 2
+    let candidate = `${n}_${withParent}`
+    while (usedZipNames.has(candidate)) {
+      n += 1
+      candidate = `${n}_${withParent}`
+    }
+    usedZipNames.add(candidate)
+    return candidate
+  }
+
   for (const target of targets) {
     if (statSync(target).isFile()) {
-      archive.file(target, { name: basename(target) })
+      archive.file(target, { name: uniqueZipName(target) })
     } else {
-      archive.directory(target, basename(target))
+      const dirName = uniqueZipName(target)
+      archive.directory(target, dirName)
     }
   }
 

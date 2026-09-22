@@ -22,8 +22,8 @@ export interface AppConfig {
    */
   maxFileSize?: number
   /**
-   * 单次请求体大小上限（字节）。busboy 通过 Content-Length / 累积字节双重判断，
-   * 超出后 fail() 触发回滚，避免恶意大请求体撑爆内存。
+   * 单次请求体大小上限（字节）。在 upload / chunk 接口入口通过
+   * Content-Length 头做预检，超限直接返回 413，避免恶意大请求体撑爆内存。
    * 默认 0 表示无限制。
    */
   maxRequestSize?: number

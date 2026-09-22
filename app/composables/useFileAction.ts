@@ -147,8 +147,8 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
      */
     function syncProgress() {
       if (!totalBytes) {
-        // 无法按字节估算时按"已完成分组"估算，避免进度条卡 0%
-        uploadingProgress.value = Math.min(99, Math.round((loadedBytes / 1) * 0))
+        // 无法按字节估算（全是 0 字节文件等）：保持 0，由调用方在完成时统一推到 100。
+        // 不要在这里编造百分比，否则会出现「恒为 0」或虚假跳变。
         return
       }
       const pct = Math.round((loadedBytes / totalBytes) * 100)
@@ -470,12 +470,23 @@ export function useFileAction({ paths, refresh, loading }: UseFileActionOptions)
       return false
     }
 
-    if ((res.data || []).some((item) => item.isExit)) {
+    const results = res.data || []
+    const conflicts = results.filter((item) => item.isExit)
+    const failures = results.filter((item) => !item.isExit && item.code !== 200)
+
+    if (conflicts.length) {
       toast.error('目录存在相同文件名')
+    }
+    if (failures.length) {
+      // 部分条目移动失败（权限 / 磁盘错误等），必须让用户知道，不能静默吞掉
+      toast.error(`${failures.length} 项移动失败：${failures[0]?.message ?? '未知错误'}`)
+    }
+    if (!conflicts.length && !failures.length) {
+      toast.success('移动成功')
     }
 
     await refresh()
-    return true
+    return conflicts.length === 0 && failures.length === 0
   }
 
   return {

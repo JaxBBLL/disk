@@ -25,7 +25,7 @@ import {
   writeSync,
   readSync
 } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { appConfig } from './config'
 
 /** 分片上传会话（一次大文件上传） */
@@ -44,6 +44,19 @@ export interface UploadSession {
 
 const sessions = new Map<string, UploadSession>()
 
+/** 会话过期时间：超过此时长未活动的会话在下一次写入时被连同临时目录一起清理 */
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000
+
+function sweepExpiredSessions(): void {
+  const now = Date.now()
+  for (const [id, session] of sessions) {
+    if (now - session.createdAt > SESSION_TTL_MS) {
+      rmSync(join(appConfig().dest, '.upload-tmp', id), { recursive: true, force: true })
+      sessions.delete(id)
+    }
+  }
+}
+
 let seq = 0
 function genUploadId(): string {
   seq = (seq + 1) & 0xffffff
@@ -56,6 +69,7 @@ export function createSession(opts: {
   chunkSize: number
   fileSize: number
 }): UploadSession {
+  sweepExpiredSessions()
   const session: UploadSession = {
     uploadId: genUploadId(),
     ...opts,
@@ -73,9 +87,36 @@ export function removeSession(uploadId: string): void {
   sessions.delete(uploadId)
 }
 
-/** 临时目录绝对路径；未 init 时不存在 */
+/**
+ * uploadId 格式白名单：仅允许 genUploadId 产物与历史测试 id 的字符集
+ * （字母数字 + 单层连字符），显式排除 `.` `/` `\` 等任何可用于路径穿越的字符。
+ * cancel 接口的 uploadId 来自用户输入，必须先过这道闸再拼路径。
+ */
+const UPLOAD_ID_RE = /^[0-9a-z]+(?:-[0-9a-z]+)*$/i
+
+export function isValidUploadId(uploadId: unknown): uploadId is string {
+  return typeof uploadId === 'string' && uploadId.length > 0 && UPLOAD_ID_RE.test(uploadId)
+}
+
+/**
+ * 临时目录绝对路径；未 init 时不存在。
+ * 双重防护：先做格式白名单，再校验 resolve 后仍落在 .upload-tmp 内
+ * （且不是 .upload-tmp 自身），杜绝 uploadId 穿越删除目录外内容。
+ */
 export function getTmpDir(uploadId: string): string {
-  return join(appConfig().dest, '.upload-tmp', uploadId)
+  if (!isValidUploadId(uploadId)) {
+    throw Object.assign(new Error('uploadId 格式非法'), { statusCode: 400 })
+  }
+
+  const root = join(appConfig().dest, '.upload-tmp')
+  const dir = resolve(root, uploadId)
+  const rel = relative(root, dir)
+
+  if (!rel || rel.startsWith('..') || isAbsolute(rel)) {
+    throw Object.assign(new Error('uploadId 路径越界'), { statusCode: 400 })
+  }
+
+  return dir
 }
 
 /** 已成功写入的分片 index 数组（来自磁盘；不依赖 sessions map） */
@@ -103,6 +144,7 @@ export function writeChunk(uploadId: string, index: number, data: Buffer): void 
   if (index < 0 || index >= session.totalChunks) {
     throw Object.assign(new Error(`index 越界 (0..${session.totalChunks - 1})`), { statusCode: 400 })
   }
+  session.createdAt = Date.now()
   const dir = getTmpDir(uploadId)
   mkdirSync(dir, { recursive: true })
   writeFileSync(join(dir, `${index}.part`), data)
@@ -153,7 +195,10 @@ export function mergeChunks(uploadId: string, totalChunks: number, target: strin
   removeSession(uploadId)
 }
 
-/** 删除临时目录与 session；幂等 */
+/**
+ * 删除临时目录与 session；幂等（目标不存在时静默）。
+ * uploadId 先经 getTmpDir 的白名单 + 收口校验，非法输入抛 400 而非执行删除。
+ */
 export function cleanupUpload(uploadId: string): void {
   rmSync(getTmpDir(uploadId), { recursive: true, force: true })
   removeSession(uploadId)

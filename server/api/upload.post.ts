@@ -15,12 +15,23 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
   const { filePath: rawPath } = getQuery(event)
   const filePath = typeof rawPath === 'string' ? rawPath : ''
 
-  const { maxFileSize = 0, maxFiles = 0 } = appConfig()
+  const { maxFileSize = 0, maxFiles = 0, maxRequestSize = 0 } = appConfig()
+
+  // maxRequestSize：Content-Length 预检（无 Content-Length 的 chunked 编码由 busboy 的 fileSize 限制兜底）
+  if (maxRequestSize > 0) {
+    const contentLength = Number(event.node.req.headers['content-length'] || 0)
+    if (contentLength > maxRequestSize) {
+      throw createError({ statusCode: 413, message: `请求体超过上限 ${maxRequestSize} 字节` })
+    }
+  }
 
   ensureRoot()
 
   const dir = resolveSafe(filePath)
-  mkdirSync(dir, { recursive: true })
+  // 注意：不在这里 mkdir，等第一个文件 part 到达时再创建。
+  // 否则客户端声明了 filePath 但一个文件都没传（或全被 maxFiles 拦截），
+  // 会在目标位置留下空目录。
+  let dirCreated = false
 
   const created: string[] = [] // 本请求实际创建的文件，失败时统一清理
   const saved: string[] = [] // 实际落盘的文件名（可能与原始名不同，重名会追加序号）
@@ -84,8 +95,17 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
       const name = uniqueName(dir, safeUploadFileName(decodeFileName(info.filename)), usedNames)
       const target = join(dir, name)
 
+      // 首个文件到达时才真正创建目标目录
+      if (!dirCreated) {
+        mkdirSync(dir, { recursive: true })
+        dirCreated = true
+      }
+
       created.push(target)
       saved.push(name)
+
+      // 标记：该文件因超过 maxFileSize 被 busboy 截断，不能算成功落盘
+      let truncated = false
 
       writing.push(
         new Promise<void>((done, failed) => {
@@ -105,21 +125,27 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
           })
           output.on('close', () => {
             outputs.delete(output)
+            // 被截断的文件：从 created/saved 中剔除，后续统一清理/不返回给前端
+            if (truncated) {
+              const ci = created.indexOf(target)
+              if (ci !== -1) created.splice(ci, 1)
+              const si = saved.indexOf(name)
+              if (si !== -1) saved.splice(si, 1)
+            }
             done()
           })
 
           stream.on('error', failed)
 
+          // busboy 在 fileSize 超限时在「文件流」上 emit 'limit'，
+          // 并把后续数据截断、正常 end。必须在这里标记，不能挂在 busboy 实例上。
+          stream.on('limit', () => {
+            truncated = true
+            console.warn(`[disk] 文件超过 maxFileSize=${maxFileSize}，已截断并剔除：${name}`)
+          })
+
           stream.pipe(output)
         })
-      )
-    })
-
-    // busboy 在 fileSize 超限后会触发该事件并把 stream 切到错误态。
-    // 不在此 fail()，否则会把整个批次回滚；只把超限文件剔除即可。
-    busboy.on('limit', () => {
-      console.warn(
-        `[disk] upload limit reached (maxFileSize=${maxFileSize}, maxFiles=${maxFiles})`
       )
     })
 
@@ -164,7 +190,7 @@ export default defineEventHandler(async (event): Promise<UploadResult> => {
   }
 
   if (!saved.length) {
-    throw createError({ statusCode: 400, message: '没有接收到文件' })
+    throw createError({ statusCode: 400, message: '没有接收到文件（或全部被大小/数量限制拦截）' })
   }
 
   return { code: 200, message: '文件上传成功', data: saved }

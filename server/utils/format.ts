@@ -58,7 +58,10 @@ export function formatDate(
   return result
 }
 
-/** 获取本机所有非内部 IPv4 地址，用于启动时打印局域网访问地址 */
+/**
+ * 获取本机所有非内部 IPv4 地址，用于启动时打印局域网访问地址。
+ * 返回值按「常见局域网网段优先」排序：192.168.* > 10.* > 172.16-31.* > 其它。
+ */
 export function getLocalIP(): string[] {
   const interfaces = os.networkInterfaces()
   const addresses: string[] = []
@@ -71,5 +74,12 @@ export function getLocalIP(): string[] {
     }
   }
 
-  return addresses
+  const rank = (ip: string): number => {
+    if (ip.startsWith('192.168.')) return 0
+    if (ip.startsWith('10.')) return 1
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return 2
+    return 3
+  }
+
+  return addresses.sort((a, b) => rank(a) - rank(b))
 }
