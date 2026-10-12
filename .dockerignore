@@ -1,0 +1,28 @@
+# 依赖与构建产物（镜像内重新安装 / 构建）
+node_modules
+.nuxt
+.output
+dist
+
+# 运行时数据目录与冒烟测试临时目录
+disk
+data
+smoke-root
+
+# 版本控制与编辑器
+.git
+.gitignore
+.idea
+.vscode
+.codebuddy
+.playwright-cli
+
+# 日志与系统文件
+*.log
+.DS_Store
+Thumbs.db
+
+# 文档与编排文件（无需进入镜像）
+readme.md
+docker-compose.yml
+Dockerfile*

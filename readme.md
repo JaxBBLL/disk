@@ -53,6 +53,7 @@ pnpm test      # 接口冒烟测试（需先启动服务）
 
 > 端口由 `start.mjs` 读取后注入环境变量再启动 Nitro；`dest` 会基于运行目录解析，
 > 根目录不存在时自动创建，运行中若被删除也会自动重建。
+> Docker 镜像里已内置一份上述默认配置，直接启动即可，无需自己准备这个文件（见「使用已发布镜像」）。
 
 ## 构建与部署
 
@@ -94,6 +95,189 @@ pm2 相关命令只有在构建产物 `dist/` 里才会出现，开发目录保�
 > 端口与根目录仍读 `config.json`，修改后执行 `pm2 restart disk` 生效。
 > 若用 fnm 管理 Node，启动 PM2 前需保证 node 在 PATH 中（如 `eval "$(fnm env --shell bash)"`）。
 > `start.mjs` 以「运行目录」为基准读 config.json 并解析 `dest`，部署到服务器时务必 `cd dist` 后再运行。
+
+## Docker
+
+镜像采用多阶段构建：构建阶段装依赖并执行 `pnpm build`，运行阶段只保留自包含的 `dist/`，
+基础镜像为 `node:22-alpine`，以非 root 的 `node` 用户（uid 1000）运行，容器内监听 `9527`。
+
+相关文件：
+
+```
+Dockerfile           多阶段构建（builder → runner）
+docker-compose.yml   本地构建编排（维护者使用）
+.dockerignore        排除 node_modules / .output / dist / disk 等
+```
+
+### 使用已发布镜像
+
+已发布镜像：`showzea/disk:latest`。使用者不需要源码，也**不需要准备配置文件**——镜像内已内置一份默认 `config.json`：
+
+```json
+{ "dest": "./disk", "hasDel": true, "port": 9527 }
+```
+
+所以启动时只要给两个参数：**端口映射**（`-p`）与**文件存储挂载**（`-v`）。
+
+**1. 启动**
+
+方式一：`docker run`
+
+```bash
+# -v 左侧是宿主机上存文件的位置，换成任意路径即可
+mkdir -p ~/disk-app/data
+sudo chown -R 1000:1000 ~/disk-app/data    # Linux 需要；macOS / Windows 的 Docker Desktop 可跳过
+
+docker run -d --name disk \
+  --restart unless-stopped \
+  -p 9527:9527 \
+  -v ~/disk-app/data:/app/disk \
+  -e TZ=Asia/Shanghai \
+  showzea/disk:latest
+```
+
+| 参数                           | 说明                                                                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `-p 9527:9527`                 | `<宿主机端口>:<容器内端口>`。**左侧随便改**（如 `-p 8000:9527`），右侧固定 `9527`                                              |
+| `-v ~/disk-app/data:/app/disk` | `<宿主机目录>:<容器内目录>`。左侧是文件实际落盘位置，右侧固定 `/app/disk`；也可写 `-v disk-data:/app/disk` 交给 named volume 管理 |
+| `--restart unless-stopped`     | 崩溃 / 宿主机重启后自动拉起                                                                                                    |
+| `-e TZ=Asia/Shanghai`          | 容器时区，影响日志时间                                                                                                        |
+
+方式二：`docker compose`（存为 `~/disk-app/compose.yml`）
+
+```yaml
+services:
+  disk:
+    image: showzea/disk:latest
+    container_name: disk
+    restart: unless-stopped
+    ports:
+      - "9527:9527"           # 左侧改宿主机端口，右侧固定 9527
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data:/app/disk       # 左侧改宿主机目录
+      # - disk-data:/app/disk  # 或改用 named volume 托管
+
+volumes:
+  disk-data:
+```
+
+```bash
+docker compose up -d        # 启动
+docker compose logs -f      # 查看日志
+docker compose down         # 停止并移除容器（数据目录 / 数据卷保留）
+```
+
+> 用宿主机目录挂载时，先 `mkdir -p ./data && sudo chown -R 1000:1000 ./data`
+> （容器内以 uid 1000 的 `node` 用户运行；macOS / Windows 的 Docker Desktop 不需要这一步）。
+
+**2. 访问**
+
+浏览器打开 `http://<宿主机IP>:<宿主机端口>`，容器日志里也会打印 Local / Network 两个地址。
+局域网内其它设备用宿主机内网 IP 访问；连不上先检查宿主机防火墙是否放行该端口。
+
+**3. 自定义配置（可选）**
+
+只有在需要**关闭删除权限**（`hasDel: false`）、**限制上传大小 / 数量**（`maxFileSize` 等）
+或**限定监听地址**（`bind`）时，才需要挂一份自己的 `config.json`：
+
+```bash
+cat > config.json <<'EOF'
+{
+  "dest": "./disk",
+  "hasDel": false,
+  "port": 9527
+}
+EOF
+```
+
+```bash
+docker run -d --name disk --restart unless-stopped \
+  -p 9527:9527 \
+  -v ~/disk-app/data:/app/disk \
+  -v "$PWD/config.json:/app/config.json:ro" \
+  showzea/disk:latest
+```
+
+| 字段                                          | 说明                                                                          |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| `dest`                                        | 文件根目录，**保持 `"./disk"` 即可**（解析为 `/app/disk`），需与 `-v` 右侧一致 |
+| `hasDel`                                      | 是否允许删除                                                                  |
+| `port`                                        | **容器内**监听端口。改动时要同步 `-p` 右侧并加 `-e PORT=<新端口>`（见下）     |
+| `bind`                                        | 监听地址，默认 `0.0.0.0`（全部网卡）                                          |
+| `maxFileSize` / `maxRequestSize` / `maxFiles` | 上传大小与数量限额，`0` 表示不限                                              |
+
+> 公网 / 不可信网络场景建议设置 `bind: "127.0.0.1"` 并显式配置这几个限额。
+> 挂载的 `config.json` 不存在时，Docker 会把挂载点建成**目录**，服务将回退默认配置并监听 `3000`（见常见问题）。
+
+**4. 换端口 / 升级**
+
+```bash
+# 只换对外端口：改映射左侧即可，容器内仍是 9527（最省事）
+docker rm -f disk
+docker run -d --name disk --restart unless-stopped \
+  -p 8000:9527 \
+  -v ~/disk-app/data:/app/disk \
+  showzea/disk:latest
+
+# 升级到新版本（数据目录 / 数据卷里的文件不受影响）
+docker pull showzea/disk:latest
+docker compose up -d      # 或 docker rm -f disk 后重新 docker run
+```
+
+> 容器内监听端口固定为 `9527`（由内置 `config.json` 决定）。只传 `-e PORT=8080` 不生效：
+> `start.mjs` 会用 `config.json` 的 `port` 填 `NITRO_PORT`，而 Nitro 的优先级是 `NITRO_PORT` > `PORT`。
+> 确实要改容器内端口时，需同时改 `config.json` 的 `port`、`-p` 右侧和 `-e PORT=<新端口>`
+> （最后一项是让内置健康检查跟随探测；漏掉则 `docker ps` 会显示 `unhealthy`，服务本身仍可用）。
+> 绝大多数情况只改 `-p` 左侧。
+
+### 常见问题
+
+- **挂载了自己的 `config.json` 后映射的端口打不开，日志出现 `config.json 解析失败，回退默认配置`**
+  宿主机上的 `config.json` 文件不存在时，Docker 会把挂载点创建成**目录**，读取时抛错并回退默认配置
+  （端口 `3000`），于是 `-p` 右侧写的 9527 无人监听。确认 `-v` 左侧是文件而非目录：
+
+  ```bash
+  docker exec disk ls -l /app/config.json   # 应是文件，不是目录
+  ```
+
+  直接去掉 `-v ...:/app/config.json:ro` 这一项即可回到镜像内置的默认配置。
+
+- **上传 / 删除报 EACCES 权限错误**
+  绑定挂载的宿主机目录属主不是 uid 1000，执行 `sudo chown -R 1000:1000 <宿主机目录>`；
+  或改用 `-v disk-data:/app/disk` 让 Docker 托管数据卷。
+
+- **`docker ps` 显示 unhealthy**
+  多为容器内端口与健康检查探针不一致（见上「换端口」），或还在 `start_period`（10 秒）内。
+  日志里出现 `[disk] Network http://...` 即说明服务已就绪。
+
+- **查看日志**
+  `docker logs -f disk`（或 `docker compose logs -f`）。启动时会打印根目录、删除权限与访问地址。
+
+- **ARM 设备（Apple Silicon / 树莓派）报 `exec format error`**
+  说明镜像未包含该架构，在 compose 中加 `platform: linux/amd64`（走模拟，性能略降），
+  或改用对应架构的镜像。
+
+### 从源码构建镜像（开发者）
+
+```bash
+docker compose up -d --build     # 本地构建并后台启动
+docker compose ps                # 查看状态（含健康检查）
+docker compose logs -f disk      # 查看日志
+docker compose restart disk      # 改完 config.json 后重启生效
+docker compose down              # 停止并移除容器（数据卷保留）
+```
+
+仓库内的 `docker-compose.yml` 会调用 `Dockerfile` 自行构建，语义与上面使用者用的片段一致，
+只是把 `image` 换成了 `build`。构建产物 `dist/` 与镜像内容保持一致（`.output` + `start.mjs` +
+`config.json`），因此本地构建与拉取镜像的运行方式、配置项完全相同。
+
+```bash
+# 构建并推送到 Docker Hub
+docker build -t showzea/disk:latest .
+docker push showzea/disk:latest
+```
 
 ## 目录结构（Nuxt 4）
 
@@ -170,7 +354,7 @@ scripts/smoke.mjs       接口冒烟测试
 
 - `ssr: false`（SPA）。这是局域网文件管理器，首屏依赖浏览器 API，关闭 SSR 更简单；
   如需 SSR，把 `nuxt.config.ts` 的 `ssr` 改回 `true`（图标库不依赖 DOM，无需 `<ClientOnly>`）。
-- 未做 Docker / 单文件打包，如需可另行添加。
+- 未做单文件打包（如 `bun build --compile` / `pkg`），如需可另行添加。
 
 ## 冒烟测试
 

@@ -4,6 +4,7 @@ node_modules
 .data
 dist
 disk
+data
 
 # logs
 *.log
